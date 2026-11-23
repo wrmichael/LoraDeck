@@ -16,6 +16,7 @@ static App* s_app;
 static esp_netif_t* s_sta;
 static std::string s_ip, s_state = "off";
 static int s_retry = 0;
+static std::string s_ssid;
 
 static std::string hostName() {                // DNS-safe: the hotspot name, or LoRaDeck-XXXXXX
     std::string n;
@@ -67,7 +68,10 @@ void net_start(App& app) {
     esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, onEvent, nullptr);
     esp_wifi_set_mode(sta ? WIFI_MODE_APSTA : WIFI_MODE_AP);
     wifi_config_t ap = {};
-    strlcpy((char*)ap.ap.ssid, app.cfg.apSsid.c_str(), sizeof ap.ap.ssid);
+    // The default name gets the board's MAC suffix, so several LoRaDecks in one room are told apart.
+    std::string ssid = app.cfg.apSsid == "LoRaDeck" ? hostName() : app.cfg.apSsid;
+    s_ssid = ssid;
+    strlcpy((char*)ap.ap.ssid, ssid.c_str(), sizeof ap.ap.ssid);
     strlcpy((char*)ap.ap.password, app.cfg.apPass.c_str(), sizeof ap.ap.password);
     ap.ap.ssid_len = (uint8_t)strlen((char*)ap.ap.ssid);
     ap.ap.channel = 6;
@@ -87,13 +91,14 @@ void net_start(App& app) {
     esp_sntp_setservername(0, "pool.ntp.org");
     sntp_set_time_sync_notification_cb([](struct timeval*) { clk::setUtcMs(clk::utcMs()); ESP_LOGI(TAG, "clock set from NTP"); });
     esp_sntp_init();
-    ESP_LOGI(TAG, "hotspot \"%s\" at 192.168.4.1%s", app.cfg.apSsid.c_str(), sta ? ", joining the home network" : "");
+    ESP_LOGI(TAG, "hotspot \"%s\" at 192.168.4.1%s", s_ssid.c_str(), sta ? ", joining the home network" : "");
 }
 
 std::string net_status() {
-    std::string s = "Hotspot " + s_app->cfg.apSsid + " (192.168.4.1)";
+    std::string s = "Hotspot " + s_ssid + " (192.168.4.1)";
     if (!s_app->cfg.staSsid.empty())
         s += ", home network " + s_app->cfg.staSsid + ": " + (s_ip.empty() ? s_state : s_ip);
     return s;
 }
 std::string net_ip() { return s_ip; }
+std::string net_ssid() { return s_ssid; }

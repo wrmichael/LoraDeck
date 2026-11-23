@@ -59,7 +59,7 @@ static void oledTask(void*) {
         else snprintf(line, sizeof line, "clock not set");
         oled::text(0, 2, line, g.tx);
         std::string ip = net_ip();
-        oled::text(0, 3, ip.empty() ? "192.168.4.1" : ip.c_str());
+        oled::text(0, 3, ip.empty() ? net_ssid().c_str() : ip.c_str());
         snprintf(line, sizeof line, "QSO: %s", g.dx.empty() ? "-" : g.dx.c_str());
         oled::text(0, 4, line);
         oled::text(0, 5, g.last.substr(0, 21).c_str());

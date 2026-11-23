@@ -7,6 +7,7 @@
 void net_start(App& app);
 std::string net_status();
 std::string net_ip();
+std::string net_ssid();          // the hotspot name in use
 void web_start(App& app);
 void ota_register(httpd_handle_t srv, App& app);
 void ota_start();                // mark a freshly updated firmware as good after a minute

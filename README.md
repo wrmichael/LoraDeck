@@ -19,7 +19,7 @@ packet instead of audio tones. Everything an FT8 operator knows carries over:
 
 ## Operating
 
-Everything is done from the **web page**: join the LoRaDeck's Wi-Fi hotspot (`LoRaDeck`, password `loradeck1`) and
+Everything is done from the **web page**: join the LoRaDeck's Wi-Fi hotspot (`LoRaDeck-XXXXXX`, the last six characters of the board's MAC address, shown on the OLED; password `loradeck1`) and
 open http://192.168.4.1, or add your home network in Settings. The OLED shows the callsign, the clock, the IP
 address, the current QSO, the last message heard and the log count.
 
