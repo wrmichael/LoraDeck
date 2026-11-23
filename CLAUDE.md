@@ -39,6 +39,7 @@ Everything is operated from the web page; the OLED shows status only.
 - 0.1.0 compiled and ran on the first board (SX1262 ready, hotspot, web server). 0.1.1: hotspot name with MAC
   suffix. Default frequency changed to 917.000 MHz after that (the first board still has 915.000 saved).
 - Next: second board, first real two-board QSO; then firmware update from a flasher web page, settings import/
-  copy, CW ID beacon, LoRa APRS, mDNS. Full list in docs/ROADMAP.md.
+  copy, CW ID beacon, LoRa APRS, mDNS, Heltec V4 support (FEM/PA enable pins, 16 MB flash). Full list in
+  docs/ROADMAP.md.
 - Planned new mode **FT-MESH** (2026-11-23): FT-LoRa where every station also repeats (managed flooding, TTL,
   longer slots split into relay windows). Design notes and the open ADIF mode-name question in docs/ROADMAP.md.

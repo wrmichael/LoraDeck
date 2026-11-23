@@ -11,6 +11,18 @@
 - CW ID beacon.
 - LoRa APRS.
 - mDNS (loradeck.local).
+- **Heltec WiFi LoRa 32 V4** support. Same size and pinout as the V3 and the same SX1262 radio, so most code
+  carries over. Differences to handle:
+  - A front-end module (PA/LNA) between the SX1262 and the antenna, up to 28 dBm. It differs by revision:
+    GC1109 on V4.2, KCT8103L on V4.3. Its enable pin (GPIO2, FEM_EN / PA_CSD) has to be driven, and on V4.2 also
+    a PA control pin (GPIO46), or the board will hardly transmit or receive. Check the V4.3 schematic.
+  - The power setting has to allow for the PA's gain: the SX1262 setting is no longer the output power. Show the
+    real output power (up to about 0.6 W) on the page.
+  - 16 MB flash (a bigger partition table and more log space) and 2 MB PSRAM (8 MB on the V4-R8).
+  - Vext control is GPIO36 on the V4 and GPIO40 on the V4-R8 (OLED power). The LED pin moves too. There are solar
+    and GNSS connectors (GNSS gives time and grid, as on the Cardputer).
+  - Choose the board in the build (sdkconfig / Kconfig) or detect it at start, with one firmware image per board
+    in the flasher.
 - Other boards: M5Stack Cardputer-Adv + Cap LoRa-1262 (SX1262 on G3/G4/G6/G40/G14/G39/G5, ST7789 screen,
   keyboard, GPS for time and grid).
 
