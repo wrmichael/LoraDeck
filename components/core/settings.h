@@ -19,7 +19,8 @@ struct Settings {
     int slotSec = 5;                     // FT-LoRa slot length; every station on the channel must use the same
     int watchdogMin = 6;                 // TX off after this long without an operator present (0 = off)
     // LoRa radio
-    uint32_t freqHz = 915000000;         // 33 cm band default
+    uint32_t freqHz = 917000000;         // 33 cm: inside the 915-921 MHz spread-spectrum block of the ARRL band plan,
+                                         // clear of LoRaWAN uplinks (<= 914.9), Meshtastic LongFast (906.875) and 915.0
     int sf = 9;                          // spreading factor 7..12
     int bwKhz = 125;                     // 125, 250 or 500
     int cr = 5;                          // coding rate 4/5..4/8 (5..8)

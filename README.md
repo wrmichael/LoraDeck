@@ -32,7 +32,8 @@ page is open and in view you count as present for the watchdog.
 
 ## Radio settings
 
-Frequency (150–960 MHz can be set, but the board's RF parts are built for one band: 863–928 MHz or 470–510 MHz),
+Frequency (default **917.000 MHz**, in the 915–921 MHz spread-spectrum block of the ARRL 33 cm band plan, away
+from Meshtastic's default and LoRaWAN; 150–960 MHz can be set, but the board's RF parts are built for one band: 863–928 MHz or 470–510 MHz),
 spreading factor 7–12 (default 9), bandwidth 125/250/500 kHz, coding rate 4/5–4/8, power up to 22 dBm.
 Stations must use the same frequency, spreading factor, bandwidth and slot length to hear each other.
 

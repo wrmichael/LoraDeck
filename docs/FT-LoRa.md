@@ -5,7 +5,7 @@ Published so anyone can receive and decode FT-LoRa transmissions; nothing in it 
 ## Radio layer
 - Semtech LoRa (chirp spread spectrum), explicit header, CRC on, preamble 16 symbols, sync word 0x1424
   ("private network" value, as used by many LoRa projects).
-- Default: 915.000 MHz, spreading factor 9, bandwidth 125 kHz, coding rate 4/5, normal IQ. All settable.
+- Default: 917.000 MHz, spreading factor 9, bandwidth 125 kHz, coding rate 4/5, normal IQ. All settable.
 
 ## Packet (11 bytes)
 | Byte | Content |
