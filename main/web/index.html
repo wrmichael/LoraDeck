@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LoRaDeck</title>
+<style>
+@font-face{font-family:"Audiowide";src:url(data:font/ttf;base64,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) format("truetype")}
+:root{--bg:#0b1014;--pan:#121a20;--pan2:#18232b;--line:#263540;--txt:#dfe8ee;--dim:#8a9aa6;--amb:#f2b632;--grn:#2fd16a;--red:#e5484d;--blu:#58a6ff;--mono:ui-monospace,Menlo,Consolas,monospace}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font:15px system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding-bottom:60px}
+header{display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:10px 14px;background:var(--pan);border-bottom:1px solid var(--line)}
+header .brand{font-family:Audiowide,sans-serif;font-size:20px;color:var(--amb)}
+header .info{font:13px var(--mono);color:var(--dim)}
+nav{display:flex;gap:4px;padding:8px 14px;background:var(--pan);border-bottom:1px solid var(--line);overflow-x:auto}
+nav button{background:none;border:0;color:var(--dim);font:inherit;padding:8px 12px;border-radius:6px;cursor:pointer}
+nav button.on{background:var(--pan2);color:var(--amb)}
+main{padding:14px;max-width:1100px;margin:0 auto}
+.hide{display:none!important}
+.card{background:var(--pan);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+button.b{background:var(--pan2);border:1px solid var(--line);color:var(--txt);font:inherit;padding:10px 14px;border-radius:8px;cursor:pointer;min-height:44px}
+button.b.on{background:var(--amb);color:#1a1300;border-color:var(--amb)}
+button.b.red{background:#7a1f22;border-color:#9a2a2e}
+button.b.grn{background:#1d5a37;border-color:#24804b}
+button.b:disabled{opacity:.5}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:760px){.grid2{grid-template-columns:1fr}}
+#rx{font:14px var(--mono);max-height:52vh;overflow:auto}
+#rx div{display:grid;grid-template-columns:70px 44px 1fr;gap:8px;padding:6px 8px;border-bottom:1px solid var(--line);cursor:pointer}
+#rx div:hover{background:var(--pan2)}
+#rx div.cq{color:var(--blu)} #rx div.me{color:var(--amb)} #rx div.tx{color:var(--dim);cursor:default}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font:14px var(--mono)}
+.kv span:nth-child(odd){color:var(--dim)}
+#slotbar{height:6px;background:var(--pan2);border-radius:3px;overflow:hidden;margin-top:8px}
+#slotbar i{display:block;height:100%;width:0;background:var(--blu)}
+#slotbar.mine i{background:var(--amb)}
+#status{color:var(--dim);font-size:14px;margin-top:8px}
+table{width:100%;border-collapse:collapse;font:14px var(--mono)}
+td,th{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left}
+th{color:var(--dim);font-weight:600}
+label.f{display:grid;grid-template-columns:240px 1fr;gap:10px;align-items:center;margin:8px 0}
+@media(max-width:600px){label.f{grid-template-columns:1fr}}
+label.f span{color:var(--dim)}
+input,select{background:var(--pan2);border:1px solid var(--line);color:var(--txt);font:inherit;padding:9px 10px;border-radius:7px;width:100%}
+.hint{color:var(--dim);font-size:13px}
+h3{margin:4px 0 10px;font-size:16px}
+/* gold logo */
+.gold{font-family:Audiowide,sans-serif;line-height:1.05;letter-spacing:.02em;white-space:nowrap;
+  background:linear-gradient(180deg,#fff2c0 0%,#ffe08a 14%,#f6c24e 26%,#b8801a 44%,#6e4a08 50%,#c48e22 57%,#ffd664 76%,#fff0b8 84%,#9a6a14 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  -webkit-text-stroke:1px rgba(90,60,8,.55);
+  filter:drop-shadow(0 1px 0 #fff3c4) drop-shadow(0 3px 0 #5a3c08) drop-shadow(0 8px 14px rgba(70,46,6,.85))}
+.by{font-family:Audiowide,sans-serif;color:#d4af5a;letter-spacing:.04em}
+#splash{position:fixed;inset:0;z-index:100;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;cursor:pointer;transition:opacity .6s}
+#splash .gold{font-size:clamp(44px,15vw,150px)}
+#splash .by{font-size:clamp(16px,3.4vw,28px)}
+#splash .ver{color:#8a7a55;font-size:14px}
+#about .gold{font-size:clamp(36px,10vw,96px);text-align:center;margin:20px 0 6px}
+#about .by{text-align:center;font-size:20px;margin-bottom:16px}
+/* TX light */
+#tl{position:fixed;right:14px;bottom:14px;z-index:60;display:flex;align-items:center;gap:8px;padding:6px 12px 6px 7px;border-radius:22px;background:rgba(11,16,20,.94);border:1px solid var(--line);font:600 14px var(--mono);color:var(--txt);cursor:pointer}
+#tl i{width:20px;height:20px;border-radius:50%;background:var(--red);box-shadow:0 0 8px var(--red)}
+#tl.g i{background:var(--grn);box-shadow:0 0 10px var(--grn)}#tl.y i{background:#f2c230;box-shadow:0 0 10px #f2c230}
+#tl.on i{animation:p .8s ease-in-out infinite}@keyframes p{50%{opacity:.3}}
+#tl.lost i{animation:p 1s steps(1) infinite}
+</style>
+</head>
+<body>
+<div id="splash" class="hide" title="Tap to continue"><div class="gold" id="spCall">LoRaDeck</div><div class="by">LoRaDeck by AC9HP</div><div class="ver" id="spVer"></div></div>
+<header><span class="brand">LoRaDeck</span><span class="info" id="hinfo">…</span><span class="info" id="hclock"></span></header>
+<nav><button data-tab="op" class="on">Operate</button><button data-tab="log">Log</button><button data-tab="set">Settings</button><button data-tab="about">About</button></nav>
+<main>
+<section id="tab-op">
+  <div class="grid2">
+    <div class="card">
+      <h3>Heard</h3>
+      <div id="rx"></div>
+      <p class="hint">Tap a CQ to call that station, or a message to you to answer it.</p>
+    </div>
+    <div>
+      <div class="card">
+        <div class="row"><button class="b grn" id="txen">Enable TX</button><button class="b red" id="halt">HALT TX</button><button class="b" id="cq">Call CQ</button><button class="b hide" id="next">Next QSO</button></div>
+        <div class="row" style="margin-top:8px"><button class="b" data-op="0">Manual</button><button class="b" data-op="1">Auto CQ</button><button class="b" data-op="2">Auto hunt</button></div>
+        <div id="slotbar"><i></i></div>
+        <div id="status"></div>
+      </div>
+      <div class="card">
+        <h3>QSO</h3>
+        <div class="kv"><span>Station</span><span id="qdx">–</span><span>Grid</span><span id="qgrid">–</span><span>Sent</span><span id="qs">–</span><span>Received</span><span id="qr">–</span><span>Next</span><span id="qnext">–</span><span>Slot</span><span id="qslot">–</span></div>
+        <div class="row" style="margin-top:10px"><button class="b" id="logq">Log QSO</button><button class="b" id="clear">Clear</button><button class="b" id="par">Even slots</button></div>
+      </div>
+    </div>
+  </div>
+</section>
+<section id="tab-log" class="hide">
+  <div class="card">
+    <div class="row"><h3 style="margin-right:auto">Log <span id="logn" class="hint"></span></h3><a class="b" href="/api/log?dl=1"><button class="b">Download ADIF</button></a></div>
+    <table><thead><tr><th>Date</th><th>UTC</th><th>Call</th><th>Grid</th><th>Sent</th><th>Rcvd</th><th>Band</th></tr></thead><tbody id="logrows"></tbody></table>
+  </div>
+</section>
+<section id="tab-set" class="hide">
+  <div class="card" id="setform">
+    <h3>Station</h3>
+    <label class="f"><span>Callsign</span><input data-k="call" autocapitalize="characters"></label>
+    <label class="f"><span>Grid locator</span><input data-k="grid" autocapitalize="characters"></label>
+    <label class="f"><span>Directed CQ (e.g. POTA, blank = plain)</span><input data-k="cqTag" autocapitalize="characters"></label>
+    <h3>FT-LoRa</h3>
+    <label class="f"><span>Slot length, seconds (all stations alike)</span><input data-k="slotSec" type="number" min="2" max="15"></label>
+    <label class="f"><span>Repeats before giving up</span><input data-k="maxRetries" type="number" min="1" max="20"></label>
+    <label class="f"><span>End with RR73 (else RRR)</span><select data-k="useRR73"><option value="1">yes</option><option value="0">no</option></select></label>
+    <label class="f"><span>POTA mode: wait for Next QSO</span><select data-k="confirmQso"><option value="0">off</option><option value="1">on</option></select></label>
+    <label class="f"><span>TX watchdog, minutes (0 = off)</span><input data-k="watchdogMin" type="number" min="0" max="120"></label>
+    <h3>LoRa radio</h3>
+    <label class="f"><span>Frequency, Hz</span><input data-k="freqHz" type="number"></label>
+    <label class="f"><span>Spreading factor</span><select data-k="sf"><option>7</option><option>8</option><option>9</option><option>10</option><option>11</option><option>12</option></select></label>
+    <label class="f"><span>Bandwidth, kHz</span><select data-k="bwKhz"><option>125</option><option>250</option><option>500</option></select></label>
+    <label class="f"><span>Coding rate</span><select data-k="cr"><option value="5">4/5</option><option value="6">4/6</option><option value="7">4/7</option><option value="8">4/8</option></select></label>
+    <label class="f"><span>Power, dBm (max 22)</span><input data-k="powerDbm" type="number" min="-9" max="22"></label>
+    <p class="hint" id="bandwarn"></p>
+    <h3>Wi-Fi</h3>
+    <label class="f"><span>Hotspot name</span><input data-k="apSsid"></label>
+    <label class="f"><span>Hotspot password (8+)</span><input data-k="apPass" type="password" placeholder="unchanged"></label>
+    <label class="f"><span>Home network name</span><input data-k="staSsid"></label>
+    <label class="f"><span>Home network password</span><input data-k="staPass" type="password" placeholder="unchanged"></label>
+    <h3>Logging</h3>
+    <label class="f"><span>ADIF mode name</span><input data-k="adifMode"></label>
+    <label class="f"><span>Send each QSO to (UDP host, e.g. Log4OM PC)</span><input data-k="logHost" placeholder="off"></label>
+    <label class="f"><span>UDP port</span><input data-k="logPort" type="number"></label>
+    <div class="row" style="margin-top:12px"><button class="b grn" id="save">Save</button><button class="b" id="restart">Restart</button><a href="/api/settings"><button class="b">Export settings</button></a><span id="setmsg" class="hint"></span></div>
+    <p class="hint">Wi-Fi changes take effect after a restart.</p>
+  </div>
+  <div class="card">
+    <h3>Update LoRaDeck</h3>
+    <div class="row"><input type="file" id="otaFile" accept=".bin" style="max-width:360px"><button class="b" id="otaGo">Install this file</button></div>
+    <p class="hint" id="otaMsg">Choose loradeck-x.y.z.bin. LoRaDeck stops transmitting, keeps its settings and log, and restarts when done.</p>
+  </div>
+</section>
+<section id="tab-about" class="hide">
+  <div class="card" id="about">
+    <div class="gold" id="abCall">LoRaDeck</div>
+    <div class="by">LoRaDeck by AC9HP</div>
+    <div class="kv" style="max-width:520px;margin:0 auto"><span>Version</span><span id="abVer">–</span><span>Mode</span><span>FT-LoRa: FT8-style messages in LoRa packets</span><span>Network</span><span id="abNet">–</span><span>Source</span><span>github.com/wrmichael/LoraDeck (MIT)</span></div>
+    <p class="hint" style="text-align:center;margin-top:16px">Message format from ft8_lib (Kārlis Goba, MIT). Audiowide font by Astigmatic (SIL Open Font License 1.1).</p>
+    <div class="row" style="justify-content:center"><button class="b" id="showSplash">Show the start screen</button></div>
+  </div>
+</section>
+</main>
+<div id="tl" title="Transmit status"><i></i><span>TX off</span></div>
+<script>
+const $=id=>document.getElementById(id);
+let S={},since=0,cfgLoaded=false,fails=0,busy=false;
+const rxList=[];
+async function cmd(c,args={}){
+  const b=new URLSearchParams({c,...args});
+  try{const r=await fetch("/api/cmd",{method:"POST",body:b});return await r.json();}catch(e){return {ok:false,err:"no connection"};}
+}
+// ---- splash: the first time this browser opens LoRaDeck; later on the About page ----
+function splash(force){
+  let seen=false;try{seen=localStorage.getItem("ld_splash")==="1";}catch(e){}
+  if(seen&&!force)return;
+  const s=$("splash");s.classList.remove("hide");s.style.opacity=1;
+  const close=()=>{s.style.opacity=0;setTimeout(()=>s.classList.add("hide"),600);try{localStorage.setItem("ld_splash","1");}catch(e){}};
+  s.onclick=close;setTimeout(close,4000);
+}
+function callName(){return (S.call&&S.call.length)?S.call:"LoRaDeck";}
+// ---- tabs ----
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("on",x===b));
+  ["op","log","set","about"].forEach(t=>$("tab-"+t).classList.toggle("hide",t!==b.dataset.tab));
+  if(b.dataset.tab==="log")loadLog();
+  if(b.dataset.tab==="set")fillSettings();
+});
+// ---- operate ----
+$("txen").onclick=async()=>{const r=await cmd("txen",{on:S.tx&&S.tx.en?"0":"1"});if(!r.ok)alert(r.err);poll();};
+$("halt").onclick=()=>cmd("halt").then(poll);
+$("cq").onclick=async()=>{const r=await cmd("cq");if(!r.ok)alert(r.err);poll();};
+$("next").onclick=()=>cmd("nextqso").then(poll);
+$("logq").onclick=async()=>{const r=await cmd("log");if(!r.ok)alert(r.err);poll();};
+$("clear").onclick=()=>cmd("clear").then(poll);
+$("par").onclick=()=>cmd("parity",{v:S.cfg&&S.cfg.cqParity==="1"?"0":"1"}).then(()=>{cfgLoaded=false;poll();});
+document.querySelectorAll("[data-op]").forEach(b=>b.onclick=()=>cmd("opmode",{m:b.dataset.op}).then(poll));
+function utc(ms){const d=new Date(ms);return d.toISOString().substr(11,8);}
+function renderRx(){
+  const el=$("rx"),atBottom=el.scrollTop+el.clientHeight>=el.scrollHeight-20;
+  el.innerHTML="";
+  for(const d of rxList){
+    const div=document.createElement("div");
+    const me=S.call&&(" "+d.text+" ").includes(" "+S.call+" ");
+    div.className=d.snr===99?"tx":d.text.startsWith("CQ ")?"cq":me?"me":"";
+    div.innerHTML=`<span>${utc(d.t)}</span><span>${d.snr===99?"TX":d.snr}</span><span></span>`;
+    div.lastChild.textContent=d.text;
+    if(d.snr!==99)div.onclick=async()=>{const r=await cmd("pick",{id:d.id});if(!r.ok)alert(r.err);poll();};
+    el.appendChild(div);
+  }
+  if(atBottom)el.scrollTop=el.scrollHeight;
+}
+function render(){
+  const tx=S.tx||{};
+  $("hinfo").textContent=`${callName()}  ${(S.radio.freq/1e6).toFixed(3)} MHz ${S.radio.band||""}  SF${S.radio.sf} BW${S.radio.bw}  ${S.radio.pwr} dBm`;
+  $("hclock").textContent=S.clock?utc(S.utc)+" UTC":"clock not set";
+  $("txen").textContent=tx.en?"TX enabled":"Enable TX";
+  $("txen").classList.toggle("on",!!tx.en);
+  document.querySelectorAll("[data-op]").forEach(b=>b.classList.toggle("on",+b.dataset.op===tx.op));
+  $("next").classList.toggle("hide",!tx.wait);$("cq").classList.toggle("hide",!!tx.wait);
+  $("qdx").textContent=tx.dx||"–";$("qgrid").textContent=tx.dxGrid||"–";
+  $("qs").textContent=tx.rptS>-99?tx.rptS:"–";$("qr").textContent=tx.rptR>-99?tx.rptR:"–";
+  $("qnext").textContent=tx.text||"–";
+  $("qslot").textContent=(tx.txParity?"odd":"even")+" slots, "+S.slotSec+" s";
+  $("par").textContent=(S.cfg&&S.cfg.cqParity==="1")?"Odd slots":"Even slots";
+  const ph=S.phase/(S.slotSec*1000);$("slotbar").firstChild.style.width=(ph*100).toFixed(1)+"%";
+  $("slotbar").classList.toggle("mine",S.parity===tx.txParity&&!!tx.en);
+  $("status").textContent=S.status||"";
+  $("spCall").textContent=$("abCall").textContent=callName();
+  $("spVer").textContent=$("abVer").textContent=S.ver;$("abNet").textContent=S.net||"";
+  trafficLight(tx);
+}
+function trafficLight(tx){
+  const el=$("tl");let c="r",t=tx.wd?"TX timed out":"TX off";
+  if(tx.en){c="g";t="TX on";if(tx.wdLeft>=0&&tx.wdMin>0){if(tx.wdLeft<=tx.wdMin*30)c="y";t="TX "+(tx.wdLeft>=60?Math.ceil(tx.wdLeft/60)+"m":tx.wdLeft+"s");}}
+  if(tx.on)t=t.replace(/^TX( on)?/,"TX now");
+  el.className=c+(tx.on?" on":"");el.lastChild.textContent=t;
+}
+$("tl").onclick=()=>cmd("ping").then(poll);
+async function poll(){
+  if(busy)return;busy=true;
+  try{
+    const ac=new AbortController(),to=setTimeout(()=>ac.abort(),3000);
+    const r=await fetch(`/api/state?since=${since}&cfg=${cfgLoaded?0:1}&act=${document.visibilityState==="visible"?1:0}`,{signal:ac.signal});
+    clearTimeout(to);
+    const j=await r.json();
+    if(j.cfg){S.cfg=j.cfg;cfgLoaded=true;}else j.cfg=S.cfg;
+    S=j;fails=0;
+    for(const d of j.rx){rxList.push(d);since=Math.max(since,d.id);}
+    while(rxList.length>100)rxList.shift();
+    if(j.rx.length)renderRx();
+    render();
+    if(!S.clock||Math.abs(Date.now()-S.utc)>1500)cmd("time",{ms:Date.now()});
+  }catch(e){if(++fails>=3){$("tl").className="lost";$("tl").lastChild.textContent="No link";}}
+  busy=false;
+}
+// ---- log ----
+async function loadLog(){
+  const t=await (await fetch("/api/log")).text();
+  const rows=[];const re=/<(\w+):(\d+)>/g;
+  for(const rec of t.split(/<EOR>/i)){
+    const f={};let m;re.lastIndex=0;
+    while((m=re.exec(rec))){f[m[1].toUpperCase()]=rec.substr(m.index+m[0].length,+m[2]);}
+    if(f.CALL)rows.push(f);
+  }
+  $("logn").textContent=rows.length+" contacts";
+  const tb=$("logrows");tb.innerHTML="";
+  for(const f of rows.reverse()){
+    const tr=document.createElement("tr");
+    for(const v of [f.QSO_DATE,(f.TIME_ON||"").substr(0,4),f.CALL,f.GRIDSQUARE,f.RST_SENT,f.RST_RCVD,f.BAND]){const td=document.createElement("td");td.textContent=v||"";tr.appendChild(td);}
+    tb.appendChild(tr);
+  }
+}
+// ---- settings ----
+function fillSettings(){
+  if(!S.cfg)return;
+  document.querySelectorAll("#setform [data-k]").forEach(i=>{if(i.type!=="password")i.value=S.cfg[i.dataset.k]??"";});
+  bandWarn();
+}
+function bandWarn(){
+  const f=+document.querySelector('[data-k=freqHz]').value;
+  $("bandwarn").textContent=(f<860e6||f>930e6)?"This frequency is outside the 863-928 MHz board's band: range and power will be poor unless your board is the 470-510 MHz version.":"";
+}
+document.querySelector('[data-k=freqHz]').oninput=bandWarn;
+$("save").onclick=async()=>{
+  const a={};
+  document.querySelectorAll("#setform [data-k]").forEach(i=>{if(i.type==="password"&&!i.value)return;a[i.dataset.k]=i.value;});
+  const r=await cmd("set",a);
+  $("setmsg").textContent=r.ok?"Saved":r.err;cfgLoaded=false;poll();
+};
+$("restart").onclick=()=>{if(confirm("Restart LoRaDeck?"))cmd("restart");};
+// ---- firmware update in pieces with a CRC each ----
+const CRCT=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0;}return t;})();
+function crc32(b){let c=0xFFFFFFFF;for(let i=0;i<b.length;i++)c=CRCT[(c^b[i])&255]^(c>>>8);return (c^0xFFFFFFFF)>>>0;}
+$("otaGo").onclick=async()=>{
+  const f=$("otaFile").files[0],m=$("otaMsg");if(!f){m.textContent="Choose loradeck-x.y.z.bin first";return;}
+  if(!confirm("Install "+f.name+"? LoRaDeck restarts when done."))return;
+  let img=new Uint8Array(await f.arrayBuffer());
+  if(img[0]!==0xE9&&img.length>0x20000)img=img.subarray(0x20000);   // complete flash image: the app starts at 0x20000
+  if(img[0]!==0xE9){m.textContent="That file is not LoRaDeck firmware.";return;}
+  const P=32768,total=img.length;let resent=0,last=null;
+  for(let off=0;off<total;){
+    const piece=img.subarray(off,Math.min(total,off+P));let j=null;
+    for(let t=0;t<6;t++){
+      try{j=await (await fetch(`/api/otachunk?off=${off}&total=${total}&crc=${crc32(piece)}`,{method:"POST",body:piece})).json();}
+      catch(e){j=null;if(off+piece.length>=total){m.textContent="LoRaDeck is restarting with the new firmware. Reload in a minute.";return;}}
+      if(j&&j.ok)break;if(j&&!j.retry){m.textContent=j.err;return;}resent++;
+    }
+    if(!j||!j.ok){m.textContent="Update failed; current firmware kept.";return;}
+    off+=piece.length;last=j;m.textContent=`Sending ${Math.round(off*100/total)} %`+(resent?` (${resent} resent)`:"");
+  }
+  m.textContent=last&&last.msg?last.msg:"Installed";
+};
+$("showSplash").onclick=()=>splash(true);
+setInterval(poll,700);poll().then(()=>splash(false));
+</script>
+</body>
+</html>
