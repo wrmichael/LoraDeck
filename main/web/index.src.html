@@ -263,9 +263,14 @@ function fillSettings(){
   bandWarn();
 }
 function bandWarn(){
-  const f=+document.querySelector('[data-k=freqHz]').value;
-  $("bandwarn").textContent=(f<860e6||f>930e6)?"This frequency is outside the 863-928 MHz board's band: range and power will be poor unless your board is the 470-510 MHz version.":"";
+  const f=+document.querySelector('[data-k=freqHz]').value,bw=+document.querySelector('[data-k=bwKhz]').value*1000;
+  const w=[];
+  if(f<860e6||f>930e6)w.push("Outside the 863-928 MHz board's band: range and power will be poor unless your board is the 470-510 MHz version.");
+  // US 33 cm amateur band 902-928 MHz: the whole signal (frequency +/- half the bandwidth) must stay inside it
+  if(f>=890e6&&f<=940e6&&(f-bw/2<902e6||f+bw/2>928e6))w.push("The signal ("+((f-bw/2)/1e6).toFixed(3)+"-"+((f+bw/2)/1e6).toFixed(3)+" MHz) goes outside the 902-928 MHz amateur band.");
+  $("bandwarn").textContent=w.join(" ");
 }
+document.querySelector('[data-k=bwKhz]').onchange=bandWarn;
 document.querySelector('[data-k=freqHz]').oninput=bandWarn;
 $("save").onclick=async()=>{
   const a={};

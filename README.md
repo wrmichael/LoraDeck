@@ -36,9 +36,14 @@ Frequency (150–960 MHz can be set, but the board's RF parts are built for one 
 spreading factor 7–12 (default 9), bandwidth 125/250/500 kHz, coding rate 4/5–4/8, power up to 22 dBm.
 Stations must use the same frequency, spreading factor, bandwidth and slot length to hear each other.
 
-**Rules:** on 902–928 MHz in the US you can operate as a radio amateur on the 33 cm band (LoRa counts as spread
-spectrum, allowed above 222 MHz; every FT-LoRa message carries your callsign), or unlicensed under Part 15 within
-its limits. Check the rules that apply to you.
+**Rules (US, 33 cm, 902–928 MHz):** LoRa is spread spectrum, which Part 97 allows above 222 MHz (§97.305,
+§97.311) with up to 10 W (the Heltec gives at most 0.16 W). Nothing is encrypted: FT-LoRa is an open, published
+format (docs/FT-LoRa.md), so it does not obscure the meaning of messages (§97.113(a)(4)), and every standard
+message carries your full callsign, which identifies the station in the mode itself (§97.119). The whole signal,
+frequency ± half the bandwidth, must stay inside 902–928 MHz; the Settings page warns when it does not. 33 cm is
+a secondary allocation (do not interfere with primary users) and is restricted in parts of Colorado and Wyoming
+(§97.303). Auto CQ / Auto hunt run with you at the web page as control operator, with the TX watchdog. Or use the
+board unlicensed under Part 15 within its limits. This is a summary, not legal advice — check the current rules.
 
 ## Building
 
