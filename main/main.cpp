@@ -25,7 +25,6 @@ static App s_app;
 volatile bool g_rebootReq = false;
 static volatile int s_resetReq = 0;                       // 1 settings, 2 everything (format the storage)
 static wl_handle_t s_wl = WL_INVALID_HANDLE;
-static volatile int s_prgHeld = 0;                        // PRG button held this many half seconds
 
 static LoraConfig radioCfg() {
     LoraConfig c;
@@ -77,7 +76,8 @@ static void doFactoryReset(int what) {
 }
 
 static void oledTask(void*) {
-    char line[24];
+    char line[32];
+    int prgHeld = 0;                                      // PRG button held this many half seconds
     gpio_config_t prg = {};                               // PRG button (GPIO 0, to ground): hold 10 s = reset
     prg.pin_bit_mask = 1ULL << 0;
     prg.mode = GPIO_MODE_INPUT;
@@ -85,10 +85,12 @@ static void oledTask(void*) {
     gpio_config(&prg);
     for (;;) {
         if (gpio_get_level(GPIO_NUM_0) == 0) {
-            if (++s_prgHeld >= 20) { s_resetReq = 1; vTaskDelay(portMAX_DELAY); }
+            prgHeld++;
+            if (prgHeld >= 20) { s_resetReq = 1; vTaskDelay(portMAX_DELAY); }
             oled::clear();
             oled::bigText(0, 0, "RESET?");
-            snprintf(line, sizeof line, "keep holding PRG %d s", (20 - s_prgHeld + 1) / 2);
+            int left = (21 - prgHeld) / 2;
+            snprintf(line, sizeof line, "keep holding PRG %d s", left < 0 ? 0 : left > 10 ? 10 : left);
             oled::text(0, 3, line);
             oled::text(0, 4, "for a settings reset");
             oled::text(0, 6, "let go to cancel");
@@ -96,7 +98,7 @@ static void oledTask(void*) {
             vTaskDelay(pdMS_TO_TICKS(500));
             continue;
         }
-        s_prgHeld = 0;
+        prgHeld = 0;
         App::Glance g = s_app.glance();
         oled::clear();
         oled::bigText(0, 0, g.call.empty() ? "LoRaDeck" : g.call.c_str());

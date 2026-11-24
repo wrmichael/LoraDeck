@@ -40,6 +40,9 @@ Everything is operated from the web page; the OLED shows status only.
 - Web flasher: docs/ (GitHub Pages, ESP Web Tools; Beta docs/manifest.json, Stable docs/stable/), built by
   tools\release.bat on Wayne's PC. Board page: Install latest Stable/Beta from wrmichael.github.io/LoraDeck.
 - No ESP-IDF in the cloud session: board code is only stub-syntax-checked there; Wayne's build is the real test.
+  Run `sh test/check_board.sh` after changing main/*.cpp: compiles main, sx1262, conlog, gps against
+  test/idf_stubs with -Werror and the newest C++ (the real build is -Werror, gnu++26: e.g. ++ on a volatile and
+  snprintf truncation are errors there; 0.2.10's first release failed on both).
 
 ## Build and flash (Wayne's PC)
 - Repo at C:\LoraDeck; ESP-IDF 6.1; `tools\update_flash.bat` pulls, builds (set-target esp32s3 the first time) and
