@@ -51,6 +51,10 @@ The **Terminal** tab: type and send.
 - Every message ends with **"&lt;to&gt; DE &lt;your call&gt;"** (or "DE &lt;your call&gt;" when no To call is set),
   unless it already contains your call. The To call fills in from the last "DE" call heard.
 - Six macro buttons, edited in Settings ({MY} = your call, {TO} = the other station).
+- A message goes out in your next slot, or in the current one if you send it early in your own slot. Until it
+  is on the air it is listed under the text box (**waiting** / **this slot** / **sending**) with **✕ Cancel**
+  (and **Cancel all**); keyed CW can be stopped while it is sending. The same message cannot be queued twice,
+  and a macro button is greyed out while its message is waiting.
 - **Log this contact**: call, mode (LoRa text `LORA-CHAT`, CW over LoRa `LORA-CW`, or keyed `CW`), RST sent/received, name,
   grid, note. Time on = the first message, time off = now.
 

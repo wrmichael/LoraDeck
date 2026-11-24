@@ -64,6 +64,8 @@ h3{margin:4px 0 10px;font-size:16px}
 #term .me{color:var(--amb)} #term .cwl{color:var(--blu)} #term .sys{color:var(--dim);font-size:12px}
 #term .t{color:var(--dim);margin-right:8px}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}.seg button{border:0;border-radius:0;min-height:40px}
+#termWait{font:13px var(--mono);margin-top:8px}#termWait div{display:flex;gap:8px;align-items:center;padding:3px 0;color:var(--amb)}
+#termWait div span.s{color:var(--dim);min-width:72px}#termWait button{min-height:30px;padding:2px 10px}
 #macros button{min-height:38px;padding:6px 10px;font-size:13px}
 #rx div.chat{color:#c9a0ff} #rx div.rly{color:#5f7380;cursor:default}
 #con{font:12px var(--mono);white-space:pre-wrap;word-break:break-all;max-height:60vh;overflow:auto;background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:8px;margin:10px 0 0}
@@ -112,6 +114,7 @@ h3{margin:4px 0 10px;font-size:16px}
         <label style="display:flex;gap:6px;align-items:center;margin-left:auto">To <input id="termTo" style="width:120px" autocapitalize="characters" placeholder="their call"></label>
       </div>
       <div class="row" style="margin-top:8px"><input id="termText" placeholder="Type and press Enter" autocomplete="off" style="flex:1"><button class="b grn" id="termSend">Send</button></div>
+      <div id="termWait"></div>
       <div class="row" id="macros" style="margin-top:8px"></div>
       <p class="hint" id="termHint"></p>
     </div>
@@ -293,11 +296,17 @@ function termHints(){
     :"Real CW at "+S.wpm+" wpm in the quiet part of your next slot. A long message runs over into the next slots. LoRaDecks cannot decode CW: listen on a 33 cm receiver.";
   $("termInfo").textContent=S.mode+" · "+S.slotSec+" s slots"+(S.tx&&(S.tx.chatQ||S.tx.cwQ)?" · waiting: "+(S.tx.chatQ+S.tx.cwQ):"");
 }
-async function termSend(text){
-  if(!text.trim())return;
+let termSending=false;
+const macroSent={};                                      // macro + via -> the text the board made of it
+function termLock(on){termSending=on;$("termSend").disabled=on;$("termSend").textContent=on?"…":"Send";renderWaiting();}
+async function termSend(text,macroKey){
+  if(!text.trim()||termSending)return;
   const to=$("termTo").value.trim().toUpperCase();
+  termLock(true);
   const r=await cmd(via,{text,to});
+  termLock(false);
   if(!r.ok){termSys(r.err);return;}
+  if(macroKey)macroSent[macroKey+"|"+via]=r.text;
   termSys((via==="cw"?"CW queued: ":"queued: ")+r.text);
   if(!lcStart)lcStart=Date.now();
   if(to&&!$("lcCall").value)$("lcCall").value=to;
@@ -310,10 +319,30 @@ function macros(){
     const m=S.cfg&&S.cfg["macro"+i];if(!m)continue;
     const b=document.createElement("button");b.className="b";
     b.textContent=m.replace(/\{MY\}/g,S.call||"MY").replace(/\{TO\}/g,($("termTo").value||"TO").toUpperCase()).substr(0,22);
-    b.title=m;b.onclick=()=>termSend(m);el.appendChild(b);
+    b.title=m;b.dataset.mk="m"+i;b.onclick=()=>termSend(m,"m"+i);el.appendChild(b);
   }
 }
 $("termTo").oninput=macros;
+// messages not sent yet, each with a Cancel; a macro whose message is waiting is greyed out
+const VIA_NAME={chat:"LoRa text",lcw:"CW·LoRa",cw:"CW"};
+function renderWaiting(){
+  const w=(S&&S.waiting)||[],el=$("termWait");
+  el.innerHTML="";
+  for(const m of w){
+    const d=document.createElement("div");
+    const st=document.createElement("span");st.className="s";st.textContent=m.s==="sending"?"sending":m.s==="this slot"?"this slot":"waiting";
+    const tx=document.createElement("span");tx.textContent="["+VIA_NAME[m.k]+"] "+m.t;tx.style.flex="1";
+    const x=document.createElement("button");x.className="b";x.textContent="✕ Cancel";x.disabled=m.s==="sending"&&m.k!=="cw";
+    x.onclick=async()=>{const r=await cmd("cancel",{k:m.k,t:m.t});if(!r.ok)termSys(r.err);};
+    d.append(st,tx,x);el.appendChild(d);
+  }
+  if(w.length>1){const d=document.createElement("div");const x=document.createElement("button");x.className="b";x.textContent="Cancel all";
+    x.onclick=()=>cmd("cancel",{k:"all"});d.appendChild(x);el.appendChild(d);}
+  document.querySelectorAll("#macros button").forEach(b=>{
+    const t=macroSent[b.dataset.mk+"|"+via];
+    b.disabled=termSending||(!!t&&w.some(m=>m.k===via&&m.t===t));
+  });
+}
 $("lcLog").onclick=async()=>{
   const r=await cmd("logchat",{call:$("lcCall").value,mode:$("lcMode").value,rstS:$("lcRstS").value,rstR:$("lcRstR").value,name:$("lcName").value,grid:$("lcGrid").value,note:$("lcNote").value,start:lcStart||Date.now()});
   $("lcMsg").textContent=r.ok?"Logged":r.err;
@@ -385,6 +414,7 @@ function render(){
   }
   if(S.lastDe&&S.lastDe!==lastDeSeen){lastDeSeen=S.lastDe;if(!$("termTo").value||document.activeElement!==$("termTo"))$("termTo").value=S.lastDe;if(!$("lcCall").value)$("lcCall").value=S.lastDe;macros();}
   termHints();
+  renderWaiting();
   trafficLight(tx);
 }
 function trafficLight(tx){

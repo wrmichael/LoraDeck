@@ -243,6 +243,12 @@ void App::planSlot(int64_t slot) {
         }
     }
     if (cfg.call.empty() || par != myParity()) return;
+    planTerminal(slot, cursor);
+}
+
+// Terminal messages and CW in our own slot, from `cursor` on (after our FT message).
+void App::planTerminal(int64_t slot, int64_t cursor, bool cwId) {
+    int64_t L = slotLen(), s0 = slot * L;
     if (!chatOut_.empty()) {                                // a Terminal message, after our FT message
         std::string t = chatOut_.front();
         chatOut_.pop_front();
@@ -277,7 +283,7 @@ void App::planSlot(int64_t slot) {
         it.kind = TX_CW;
         it.text = cwOut_.front();
         cwOut_.pop_front();
-    } else if (cfg.cwIdMin > 0 && lastTxMono_ >= 0 && mono - lastTxMono_ < cfg.cwIdMin * 60000LL &&
+    } else if (cwId && cfg.cwIdMin > 0 && lastTxMono_ >= 0 && mono - lastTxMono_ < cfg.cwIdMin * 60000LL &&
                (lastIdMono_ < 0 || mono - lastIdMono_ >= cfg.cwIdMin * 60000LL)) {
         it.kind = TX_CWID;
         it.text = "DE " + cfg.call;
@@ -287,6 +293,44 @@ void App::planSlot(int64_t slot) {
     it.at = quiet;
     it.late = 1500;
     queue(it);
+}
+
+void App::sendSoon() {
+    if (!clk::utcValid() || cfg.call.empty()) return;
+    int64_t t = now(), L = slotLen(), slot = t / L;
+    if (slot != curSlot_ || (int)(slot & 1) != myParity() || t - slot * L > 700) return;
+    int64_t cursor = t + 30;                                // after anything already planned in this slot
+    for (const TxItem& it : txq_)
+        if (it.at / L == slot && !it.pkt.empty() && it.at + air((int)it.pkt.size()) + 80 > cursor) cursor = it.at + air((int)it.pkt.size()) + 80;
+    if (txOn_ && !cur_.pkt.empty()) {
+        int64_t end = cur_.at + air((int)cur_.pkt.size()) + 80;
+        if (end > cursor) cursor = end;
+    }
+    planTerminal(slot, cursor, false);
+}
+
+static int termKind(int txKind) { return txKind == 2 ? 0 : txKind == 5 ? 1 : txKind == 3 ? 2 : -1; }   // TX_CHAT/LCW/CW
+
+bool App::waiting(int kind, const std::string& text) const {   // kind 0 chat, 1 CW over LoRa, 2 keyed CW
+    const std::deque<std::string>& q = kind == 0 ? chatOut_ : kind == 1 ? lcwOut_ : cwOut_;
+    for (const std::string& t : q) if (t == text) return true;
+    for (const TxItem& it : txq_) if (termKind(it.kind) == kind && it.text == text) return true;
+    return txOn_ && termKind(cur_.kind) == kind && cur_.text == text;
+}
+
+std::string App::waitingJson() const {
+    static const char* names[3] = {"chat", "lcw", "cw"};
+    std::string o = "[";
+    auto add = [&](int k, const std::string& t, const char* st) {
+        if (o.size() > 1) o += ',';
+        o += "{\"k\":" + jstr(names[k]) + ",\"t\":" + jstr(t) + ",\"s\":" + jstr(st) + "}";
+    };
+    if (txOn_ && termKind(cur_.kind) >= 0) add(termKind(cur_.kind), cur_.text, "sending");
+    for (const TxItem& it : txq_) if (termKind(it.kind) >= 0) add(termKind(it.kind), it.text, "this slot");
+    for (const std::string& t : chatOut_) add(0, t, "waiting");
+    for (const std::string& t : lcwOut_) add(1, t, "waiting");
+    for (const std::string& t : cwOut_) add(2, t, "waiting");
+    return o + "]";
 }
 
 void App::onTxDone() {
@@ -664,26 +708,53 @@ std::string App::command(const std::string& c, const std::map<std::string, std::
             std::string clean;
             for (char ch : t) clean += (ch >= 0x20 && ch < 0x7F) ? ch : ' ';
             if (clean.size() > (size_t)CHAT_MAX) return err("Too long: " + std::to_string(clean.size()) + " characters with the calls, at most " + std::to_string(CHAT_MAX));
+            if (waiting(0, clean)) return err("That message is already waiting");
             if (chatOut_.size() >= 5) return err("Five messages are already waiting");
             chatOut_.push_back(clean);
             status("Message waiting for our next slot");
+            sendSoon();
             return "{\"ok\":true,\"text\":" + jstr(clean) + "}";
         }
         std::string cw = morseClean(t);
         if (cw.empty()) return err("Nothing to send in CW");
         if (c == "lcw") {
             if (cw.size() > (size_t)CHAT_MAX) return err("Too long: " + std::to_string(cw.size()) + " characters with the calls, at most " + std::to_string(CHAT_MAX));
+            if (waiting(1, cw)) return err("That message is already waiting");
             if (lcwOut_.size() >= 5) return err("Five messages are already waiting");
             lcwOut_.push_back(cw);
             status("CW over LoRa waiting for our next slot");
+            sendSoon();
             return "{\"ok\":true,\"text\":" + jstr(cw) + "}";
         }
         int ms = morseMs(cw, cfg.cwWpm);
         if (ms > 60000) return err("Too long for one CW message (" + std::to_string(ms / 1000) + " s at " + std::to_string(cfg.cwWpm) + " wpm; at most 60 s)");
+        if (waiting(2, cw)) return err("That message is already waiting");
         if (cwOut_.size() >= 3) return err("Three CW messages are already waiting");
         cwOut_.push_back(cw);
+        sendSoon();
         status("CW waiting for our next slot (" + std::to_string(ms / 1000 + 1) + " s)");
         return "{\"ok\":true,\"text\":" + jstr(cw) + ",\"ms\":" + jnum(ms) + "}";
+    }
+    if (c == "cancel") {                                      // Terminal messages not sent yet: one, or all
+        std::string k = arg(a, "k"), t = arg(a, "t");
+        bool all = k == "all";
+        int kind = k == "chat" ? 0 : k == "lcw" ? 1 : k == "cw" ? 2 : -1;
+        int n = 0;
+        auto drop = [&](std::deque<std::string>& q, int qk) {
+            for (auto it = q.begin(); it != q.end();) {
+                if (all || (qk == kind && *it == t)) { it = q.erase(it); n++; } else ++it;
+            }
+        };
+        drop(chatOut_, 0);
+        drop(lcwOut_, 1);
+        drop(cwOut_, 2);
+        for (auto it = txq_.begin(); it != txq_.end();) {
+            int tk = termKind(it->kind);
+            if (tk >= 0 && (all || (tk == kind && it->text == t))) { it = txq_.erase(it); n++; } else ++it;
+        }
+        if (txOn_ && termKind(cur_.kind) == 2 && (all || (kind == 2 && cur_.text == t)) && radioAbort) { radioAbort(); n++; }
+        status(n ? "Cancelled" : "Nothing to cancel (already sent?)");
+        return n ? ok() : err("Already sent");
     }
     if (c == "logchat") {                                     // a contact made on the Terminal page
         std::string call = upperS(arg(a, "call"));
@@ -795,7 +866,7 @@ std::string App::stateJson(uint32_t sinceRx, bool withCfg) {
          ",\"wait\":" + jbool(seq.waitNext) + ",\"wd\":" + jbool(watchdogTripped_) +
          ",\"wdLeft\":" + jnum(wdLeft) + ",\"wdMin\":" + jnum(cfg.watchdogMin) +
          ",\"chatQ\":" + jnum((int64_t)chatOut_.size()) + ",\"cwQ\":" + jnum((int64_t)(cwOut_.size() + lcwOut_.size())) + "}";
-    o += ",\"lastDe\":" + jstr(lastDe_);
+    o += ",\"lastDe\":" + jstr(lastDe_) + ",\"waiting\":" + waitingJson();
     o += ",\"rx\":[";
     bool first = true;
     for (const Decode& d : recent_) {

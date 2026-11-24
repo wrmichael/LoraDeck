@@ -111,6 +111,10 @@ private:
     void syncSeq();
     void startSlot(int64_t slot);
     void planSlot(int64_t slot);
+    void planTerminal(int64_t slot, int64_t cursor, bool cwId = true);
+    void sendSoon();                                          // early in our own slot: a new message goes now
+    bool waiting(int kind, const std::string& text) const;    // already queued or planned, not yet sent
+    std::string waitingJson() const;
     void queue(const TxItem& it);
     void sendDue(int64_t t);
     void dropOwn();                                           // our own planned transmissions (not relays)

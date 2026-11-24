@@ -58,6 +58,9 @@ Everything is operated from the web page; the OLED shows status only.
   that); "/" in the call becomes "_" in the log file name; warning when another station sends as our call.
 - **First real two-board FT-LoRa QSO 2026-11-23**: AC9HP and club call W9AIM, Auto CQ / Auto hunt, full sequence
   and log. Second board done.
+- 0.2.4: Terminal: same message refused while waiting (Wayne tapped CW over LoRa 3 times, got it 3 times),
+  waiting list with Cancel / Cancel all (state "waiting", command "cancel"), Send locked during the request,
+  macro greyed while its message waits, sendSoon(): early in our own slot (< 700 ms) a message goes in that slot.
 - 0.2.3: the 0.2.2 release's program said 0.2.1: CMake read version.txt only when it configured. Now
   CMAKE_CONFIGURE_DEPENDS on version.txt, release.ps1 runs reconfigure and refuses to publish when the version
   inside build\loradeck.bin (app image offset 48) differs from version.txt.

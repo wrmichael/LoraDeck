@@ -219,6 +219,20 @@ static void ftcwTests() {
     for (int i = 0; i < 2000 && n[1].app.stateJson(0, false).find("\"lastDe\":\"KC9CWA\"") == std::string::npos; i++) step();
     std::string js = n[1].app.stateJson(0, false);
     CHECK(js.find("\"k\":4,\"h\":0,\"w\":20,\"text\":\"GM OM UR 599 KC9CWB DE KC9CWA\"") != std::string::npos);
+    // the same message twice is refused; waiting messages are listed and can be cancelled
+    n[0].app.command("halt", {});
+    r = n[0].app.command("lcw", {{"text", "TEST ONE"}});
+    CHECK(r.find("true") != std::string::npos);
+    CHECK(n[0].app.command("lcw", {{"text", "TEST ONE"}}).find("already waiting") != std::string::npos);
+    CHECK(n[0].app.command("chat", {{"text", "hello"}}).find("true") != std::string::npos);
+    js = n[0].app.stateJson(0, false);
+    CHECK(js.find("\"waiting\":[") != std::string::npos && js.find("TEST ONE DE KC9CWA") != std::string::npos);
+    CHECK(n[0].app.command("cancel", {{"k", "lcw"}, {"t", "TEST ONE DE KC9CWA"}}).find("true") != std::string::npos);
+    js = n[0].app.stateJson(0, false);
+    CHECK(js.find("\"t\":\"TEST ONE DE KC9CWA\"") == std::string::npos && js.find("\"t\":\"hello DE KC9CWA\"") != std::string::npos);
+    CHECK(n[0].app.command("cancel", {{"k", "all"}}).find("true") != std::string::npos);
+    CHECK(n[0].app.stateJson(0, false).find("\"waiting\":[]") != std::string::npos);
+    CHECK(n[0].app.command("cancel", {{"k", "all"}}).find("Already sent") != std::string::npos);
     r = n[1].app.command("logchat", {{"call", "KC9CWA"}, {"mode", "lcw"}, {"rstS", "599"}});
     CHECK(r.find("true") != std::string::npos && n[1].logged.size() == 2 && n[1].logged.back().find("<MODE:7>LORA-CW") != std::string::npos);
 }
