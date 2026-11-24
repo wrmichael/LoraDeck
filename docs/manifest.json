@@ -1,6 +1,6 @@
 {
   "name": "LoRaDeck",
-  "version": "0.2.10",
+  "version": "0.2.11",
   "new_install_prompt_erase": true,
   "new_install_improv_wait_time": 0,
   "builds": [
