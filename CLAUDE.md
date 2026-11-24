@@ -58,6 +58,8 @@ Everything is operated from the web page; the OLED shows status only.
   that); "/" in the call becomes "_" in the log file name; warning when another station sends as our call.
 - **First real two-board FT-LoRa QSO 2026-11-23**: AC9HP and club call W9AIM, Auto CQ / Auto hunt, full sequence
   and log. Second board done.
+- 2026-11-23 evening: 0.2.x running on both boards, "things seem to be working better". Wayne is recruiting more
+  users for a wider test of this version. When reports come in: ask for the Console log download from each board.
 - 0.2.6: Terminal tags TXT / CoL (CW over LoRa) / CW only in the All view; Clear button.
 - 0.2.5: Terminal "Show: This mode / All" (default This mode; data-v on lines, localStorage ld_termAll); sound
   for CW over LoRa only when shown, FT-CW sound only in FT-CW mode.
