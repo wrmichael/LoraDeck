@@ -1,0 +1,14 @@
+{
+  "name": "LoRaDeck",
+  "version": "0.2.0",
+  "new_install_prompt_erase": true,
+  "new_install_improv_wait_time": 0,
+  "builds": [
+    {
+      "chipFamily": "ESP32-S3",
+      "parts": [
+        { "path": "firmware/loradeck.bin", "offset": 0 }
+      ]
+    }
+  ]
+}
