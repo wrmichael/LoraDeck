@@ -63,6 +63,11 @@ Everything is operated from the web page; the OLED shows status only.
   and log. Second board done.
 - 2026-11-23 evening: 0.2.x running on both boards, "things seem to be working better". Wayne is recruiting more
   users for a wider test of this version. When reports come in: ask for the Console log download from each board.
+- 0.2.11 (2026-11-24): the board whose settings would not save shows Storage "0 KB free of 4148 KB", also after a
+  full erase (4148 KB total is right: 0x420000 partition minus wear levelling). Something fills it, or free is
+  misreported: added /api/files + Console "Show what is in the storage" (paths, sizes) to find out. Waiting for
+  that list and the console log. (Wayne pasted an answer from another chat about LittleFS/SPIFFS/4 MB flash:
+  not LoRaDeck; it is ESP-IDF FATFS on 8 MB.) max_uri_handlers 10 -> 16 (was at the limit).
 - 0.2.10: Wayne: "the log is empty on this unit, it should have 2 QSOs" (the unit whose settings would not save).
   Per-call logs (<CALL>_log.adi): a call change starts an empty log. Bug: a failed save still switched cfg in
   memory (new call shown, its empty log) -> now reverted. Log tab "Log for" lists every *_log.adi (/api/logs,

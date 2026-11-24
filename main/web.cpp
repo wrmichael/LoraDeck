@@ -1,5 +1,7 @@
 // Web control page: everything is done from here (the OLED only shows status).
 #include "board.h"
+#include <dirent.h>
+#include <sys/stat.h>
 #include "conlog.h"
 #include "esp_vfs_fat.h"
 #include "sx1262.h"
@@ -105,6 +107,27 @@ static esp_err_t hLog(httpd_req_t* req) {                    // ?file=AC9HP_P fo
     return httpd_resp_send(req, t.data(), t.size());
 }
 static esp_err_t hLogs(httpd_req_t* req) { return sendJson(req, s_app->logListJson()); }
+// What is in the storage, with sizes (to see what fills it): [{"path","size","dir"}]
+static void listDir(const std::string& dir, std::string& js, int depth) {
+    DIR* d = opendir(dir.c_str());
+    if (!d) return;
+    while (struct dirent* e = readdir(d)) {
+        std::string name = e->d_name;
+        if (name == "." || name == "..") continue;
+        std::string p = dir + "/" + name;
+        struct stat st = {};
+        bool isDir = stat(p.c_str(), &st) == 0 && S_ISDIR(st.st_mode);
+        if (js.size() > 1) js += ',';
+        js += "{\"path\":\"" + p + "\",\"size\":" + std::to_string(isDir ? 0 : (long)st.st_size) + ",\"dir\":" + (isDir ? "true" : "false") + "}";
+        if (isDir && depth < 3 && js.size() < 6000) listDir(p, js, depth + 1);
+    }
+    closedir(d);
+}
+static esp_err_t hFiles(httpd_req_t* req) {
+    std::string js = "[";
+    listDir("/data", js, 0);
+    return sendJson(req, js + "]");
+}
 static esp_err_t hConsole(httpd_req_t* req) {                // console log: ?tail=bytes, ?dl=1 for the whole file
     std::map<std::string, std::string> a;
     parseForm(query(req), a);
@@ -126,7 +149,7 @@ void web_start(App& app) {
     s_app = &app;
     httpd_config_t cfg = HTTPD_DEFAULT_CONFIG();
     cfg.stack_size = 8192;
-    cfg.max_uri_handlers = 10;
+    cfg.max_uri_handlers = 16;
     cfg.lru_purge_enable = true;
     cfg.recv_wait_timeout = 10;
     httpd_handle_t srv = nullptr;
@@ -140,6 +163,7 @@ void web_start(App& app) {
         {"/api/settings", HTTP_GET, hSettings, nullptr},
         {"/api/console", HTTP_GET, hConsole, nullptr},
         {"/api/logs", HTTP_GET, hLogs, nullptr},
+        {"/api/files", HTTP_GET, hFiles, nullptr},
     };
     for (auto& h : u) httpd_register_uri_handler(srv, &h);
     ota_register(srv, app);

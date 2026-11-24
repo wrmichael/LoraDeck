@@ -235,6 +235,8 @@ h3{margin:4px 0 10px;font-size:16px}
   <div class="card">
     <h3>Radio</h3>
     <div class="kv"><span>Settings</span><span id="rsCfg">–</span><span>Packets sent</span><span id="rsTx">–</span><span>Packets received</span><span id="rsRx">–</span><span>Received with errors</span><span id="rsErr">–</span><span>Last received</span><span id="rsLast">–</span><span>Clock</span><span id="rsClk">–</span><span>GPS</span><span id="rsGps">–</span><span>Storage</span><span id="rsFs">–</span></div>
+    <div class="row" style="margin-top:6px"><button class="b" id="fsList">Show what is in the storage</button></div>
+    <pre id="fsFiles" style="font:12px var(--mono);white-space:pre-wrap;margin:6px 0 0"></pre>
     <p class="hint">Both stations need the same frequency, SF, bandwidth, coding rate and slot length. "Received with errors" going up while nothing is heard means a signal is there but does not decode (settings differ, or too strong at very short range: turn the power down or move the boards apart).</p>
   </div>
   <div class="card">
@@ -409,6 +411,13 @@ async function loadCon(){
   conBusy=false;
 }
 $("conRef").onclick=loadCon;
+$("fsList").onclick=async()=>{
+  try{
+    const l=await (await fetch("/api/files",{cache:"no-store"})).json();
+    let tot=0;const lines=l.map(f=>{tot+=f.size;return (f.dir?"[dir] ":(f.size/1024).toFixed(1).padStart(8)+" KB  ")+f.path;});
+    $("fsFiles").textContent=(lines.length?lines.join("\n"):"(no files)")+"\n"+"-".repeat(30)+"\n"+(tot/1024).toFixed(1)+" KB in files"+(S.fs?", "+S.fs.free+" KB free of "+S.fs.total+" KB":"");
+  }catch(e){$("fsFiles").textContent="Could not read the storage";}
+};
 $("conClr").onclick=async()=>{if(confirm("Clear the console log?")){await cmd("conclear");loadCon();}};
 setInterval(()=>{if(!$("tab-con").classList.contains("hide"))loadCon();},3000);
 // ---- operate ----
