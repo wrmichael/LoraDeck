@@ -215,6 +215,17 @@ h3{margin:4px 0 10px;font-size:16px}
     <p class="hint">The Install latest buttons fetch the firmware from the <a href="https://wrmichael.github.io/LoraDeck/" target="_blank" rel="noopener">flasher page</a>, so this browser needs internet (the board on your home network, or a phone with mobile data). Or download loradeck-x.y.z.bin there and install the file. LoRaDeck stops transmitting, keeps its settings and log, and restarts when done; if the new version does not start properly it goes back to the old one.</p>
     <p class="hint" id="otaMsg"></p>
   </div>
+  <div class="card" style="border-color:#5a2a2c">
+    <details id="frBox">
+      <summary style="cursor:pointer;color:var(--red);font-weight:600">Factory reset…</summary>
+      <p class="hint">Puts this board back to how it came: callsign, radio, Wi-Fi (back to the LoRaDeck-XXXXXX hotspot, password loradeck1) and all other settings. <a href="/api/log" download>Download the log</a> and <a href="/api/settings" download>the settings</a> first.</p>
+      <label style="display:block;margin:6px 0"><input type="radio" name="frWhat" value="0" checked> Settings only (keep the QSO log and the console log)</label>
+      <label style="display:block;margin:6px 0"><input type="radio" name="frWhat" value="1"> <b>Everything</b>: settings, QSO log and console log (the storage is formatted; also repairs a damaged one)</label>
+      <label class="f"><span>Type RESET to confirm</span><input id="frConfirm" autocomplete="off" autocapitalize="characters" placeholder="RESET"></label>
+      <div class="row"><button class="b" id="frGo" disabled style="background:var(--red);color:#fff">Factory reset</button><span class="hint" id="frMsg"></span></div>
+      <p class="hint">Without the page: hold the board's PRG button for 10 seconds while it runs (the OLED counts down; let go to cancel). That resets the settings and keeps the log.</p>
+    </details>
+  </div>
 </section>
 <section id="tab-con" class="hide">
   <div class="card">
@@ -561,6 +572,18 @@ function otaVersions(){
     }).catch(()=>{$(id).textContent=ch==="stable"?"not released yet, or no internet in this browser":"no internet in this browser";});
   }
 }
+// factory reset: RESET typed, a one-time code from the board, one more question, then the board wipes and restarts
+$("frConfirm").oninput=()=>{$("frGo").disabled=$("frConfirm").value!=="RESET";};
+$("frGo").onclick=async()=>{
+  const all=document.querySelector("input[name=frWhat]:checked").value==="1",m=$("frMsg");
+  if($("frConfirm").value!=="RESET")return;
+  if(!confirm(all?"Erase EVERYTHING on this board: settings, QSO log and console log? This cannot be undone.":"Reset all settings on this board (the logs are kept)? This cannot be undone."))return;
+  const t=await cmd("resettoken");
+  if(!t.ok||!t.token){m.textContent="The board did not answer";return;}
+  const r=await cmd("factoryreset",{token:t.token,confirm:"RESET",all:all?"1":"0"});
+  $("frConfirm").value="";$("frGo").disabled=true;
+  m.textContent=r.ok?"Resetting and restarting. Join the Wi-Fi LoRaDeck-XXXXXX (password loradeck1) and open http://192.168.4.1":r.err;
+};
 $("otaStable").onclick=()=>otaLatest("stable");
 $("otaBeta").onclick=()=>otaLatest("beta");
 let otaBusy=false;

@@ -13,6 +13,9 @@
 #include "esp_vfs_fat.h"
 #include "esp_app_desc.h"
 #include "esp_log.h"
+#include "wear_levelling.h"
+#include "driver/gpio.h"
+#include "esp_partition.h"
 #include "esp_system.h"
 #include "lwip/sockets.h"
 #include "lwip/netdb.h"
@@ -20,6 +23,9 @@
 static const char* TAG = "main";
 static App s_app;
 volatile bool g_rebootReq = false;
+static volatile int s_resetReq = 0;                       // 1 settings, 2 everything (format the storage)
+static wl_handle_t s_wl = WL_INVALID_HANDLE;
+static volatile int s_prgHeld = 0;                        // PRG button held this many half seconds
 
 static LoraConfig radioCfg() {
     LoraConfig c;
@@ -47,9 +53,50 @@ static void forwardLog(const std::string& rec) {        // UDP ADIF to a logger 
     freeaddrinfo(res);
 }
 
+// Factory reset: settings only (the files are removed), or everything (the storage partition is erased; it is
+// formatted when it does not mount at the next start). Then restart with the default hotspot.
+static void doFactoryReset(int what) {
+    oled::clear();
+    oled::bigText(0, 0, "RESET");
+    oled::text(0, 3, what == 2 ? "settings and logs" : "settings (log kept)");
+    oled::text(0, 5, "restarting...");
+    oled::show();
+    ESP_LOGW(TAG, "factory reset: %s", what == 2 ? "everything" : "settings");
+    vTaskDelay(pdMS_TO_TICKS(800));
+    if (what == 2) {
+        if (s_wl != WL_INVALID_HANDLE) esp_vfs_fat_spiflash_unmount_rw_wl("/data", s_wl);
+        const esp_partition_t* p = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_FAT, "storage");
+        if (p) esp_partition_erase_range(p, 0, p->size);
+    } else {
+        remove("/data/settings.txt");
+        remove("/data/settings.txt.new");
+    }
+    nvs_flash_erase();                                    // Wi-Fi driver data too
+    vTaskDelay(pdMS_TO_TICKS(300));
+    esp_restart();
+}
+
 static void oledTask(void*) {
     char line[24];
+    gpio_config_t prg = {};                               // PRG button (GPIO 0, to ground): hold 10 s = reset
+    prg.pin_bit_mask = 1ULL << 0;
+    prg.mode = GPIO_MODE_INPUT;
+    prg.pull_up_en = GPIO_PULLUP_ENABLE;
+    gpio_config(&prg);
     for (;;) {
+        if (gpio_get_level(GPIO_NUM_0) == 0) {
+            if (++s_prgHeld >= 20) { s_resetReq = 1; vTaskDelay(portMAX_DELAY); }
+            oled::clear();
+            oled::bigText(0, 0, "RESET?");
+            snprintf(line, sizeof line, "keep holding PRG %d s", (20 - s_prgHeld + 1) / 2);
+            oled::text(0, 3, line);
+            oled::text(0, 4, "for a settings reset");
+            oled::text(0, 6, "let go to cancel");
+            oled::show();
+            vTaskDelay(pdMS_TO_TICKS(500));
+            continue;
+        }
+        s_prgHeld = 0;
         App::Glance g = s_app.glance();
         oled::clear();
         oled::bigText(0, 0, g.call.empty() ? "LoRaDeck" : g.call.c_str());
@@ -79,12 +126,11 @@ static void oledTask(void*) {
 extern "C" void app_main(void) {
     esp_err_t e = nvs_flash_init();
     if (e == ESP_ERR_NVS_NO_FREE_PAGES || e == ESP_ERR_NVS_NEW_VERSION_FOUND) { nvs_flash_erase(); nvs_flash_init(); }
-    static wl_handle_t wl;
     esp_vfs_fat_mount_config_t mc = {};
     mc.format_if_mount_failed = true;
     mc.max_files = 6;
     mc.allocation_unit_size = 4096;
-    if (esp_vfs_fat_spiflash_mount_rw_wl("/data", "storage", &mc, &wl) != ESP_OK) ESP_LOGE(TAG, "storage did not mount");
+    if (esp_vfs_fat_spiflash_mount_rw_wl("/data", "storage", &mc, &s_wl) != ESP_OK) ESP_LOGE(TAG, "storage did not mount");
     else conlog_start();
     s_app.version = esp_app_get_description()->version;
     s_app.trace = [](const std::string& line) { ESP_LOGI("app", "%s", line.c_str()); };
@@ -111,6 +157,7 @@ extern "C" void app_main(void) {
         s_app.airMs = sx1262::airtimeMs(radioCfg(), FTL_PACKET);
     };
     s_app.onLogged = forwardLog;
+    s_app.factoryReset = [](bool all) { s_resetReq = all ? 2 : 1; };
 
     net_start(s_app);
     gps_start(s_app);
@@ -121,6 +168,7 @@ extern "C" void app_main(void) {
     for (;;) {
         s_app.tick();
         if (g_rebootReq) { vTaskDelay(pdMS_TO_TICKS(500)); esp_restart(); }
+        if (s_resetReq) { vTaskDelay(pdMS_TO_TICKS(500)); doFactoryReset(s_resetReq); }
         vTaskDelay(pdMS_TO_TICKS(10));
     }
 }

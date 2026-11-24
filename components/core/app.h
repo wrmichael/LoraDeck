@@ -37,6 +37,8 @@ public:
     std::function<int(int len)> airtime;
     // Radio settings changed (frequency, SF, bandwidth, coding rate, power).
     std::function<void()> radioConfigure;
+    // Factory reset confirmed on the page: wipe the settings (everything = also the logs: format the storage) and restart.
+    std::function<void(bool everything)> factoryReset;
     // A contact was logged: the ADIF record (for UDP forwarding).
     std::function<void(const std::string& adifRecord)> onLogged;
     // One line for the console log (what was sent and heard, clock changes, commands).
@@ -107,6 +109,8 @@ private:
     int logCount_ = 0;
     std::map<std::string, int> worked_;                       // calls in the log (for "worked before")
     std::string lastDe_;                                      // last "DE <call>" heard in a chat message
+    uint32_t resetToken_ = 0;                                 // factory reset: one-time code, valid for a minute
+    int64_t resetTokenMono_ = 0;
 
     void status(const std::string& s) { status_ = s; }
     void tr(const std::string& s) { if (trace) trace(s); }

@@ -834,6 +834,34 @@ std::string App::command(const std::string& c, const std::map<std::string, std::
         status(n ? "Cancelled" : "Nothing to cancel (already sent?)");
         return n ? ok() : err("Already sent");
     }
+    // Factory reset, deliberately awkward: the page asks for a one-time code (valid 60 s), the operator types RESET,
+    // and only then the board wipes and restarts.
+    if (c == "resettoken") {
+        uint32_t h = 2166136261u ^ (uint32_t)clk::monoMs();
+        for (char ch : cfg.call) h = (h ^ (uint8_t)ch) * 16777619u;
+        h = (h ^ (uint32_t)(now() & 0xFFFFFFFF)) * 16777619u;
+        resetToken_ = (h % 900000) + 100000;
+        resetTokenMono_ = clk::monoMs();
+        return "{\"ok\":true,\"token\":" + jnum(resetToken_) + "}";
+    }
+    if (c == "factoryreset") {
+        uint32_t tok = (uint32_t)strtoul(arg(a, "token").c_str(), nullptr, 10);
+        bool fresh = resetToken_ && tok == resetToken_ && clk::monoMs() - resetTokenMono_ < 60000;
+        resetToken_ = 0;                                     // one try per code
+        if (arg(a, "confirm") != "RESET") return err("Type RESET (capitals) to confirm");
+        if (!fresh) return err("The confirmation expired: press Factory reset again");
+        bool all = arg(a, "all") == "1";
+        seq.halt();
+        txq_.clear();
+        chatOut_.clear();
+        cwOut_.clear();
+        lcwOut_.clear();
+        if (txOn_ && (cur_.kind == TX_CW || cur_.kind == TX_CWID) && radioAbort) radioAbort();
+        tr(all ? "FACTORY RESET: everything (settings and logs)" : "FACTORY RESET: settings (the logs are kept)");
+        status("Factory reset: restarting");
+        if (factoryReset) factoryReset(all);
+        return ok();
+    }
     if (c == "logchat") {                                     // a contact made on the Terminal page
         std::string call = upperS(arg(a, "call"));
         Settings chk;

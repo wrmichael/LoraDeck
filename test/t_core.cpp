@@ -451,6 +451,30 @@ int main() {
         CHECK(!c.save("/nonexistent_dir/settings.txt") && Settings::lastError.find("cannot open") != std::string::npos);
         CHECK(c.save("/tmp/ld_save_test.txt") && Settings::lastError.empty());
     }
+    {                                                       // factory reset: code + RESET, one try, expires
+        App r;
+        mkdir("/tmp/ld_fr", 0755);
+        r.begin("/tmp/ld_fr");
+        int called = -1;
+        r.factoryReset = [&](bool all) { called = all ? 1 : 0; };
+        CHECK(r.command("factoryreset", {{"confirm", "RESET"}, {"token", "0"}}).find("expired") != std::string::npos);
+        std::string t = r.command("resettoken", {});
+        std::string tok = t.substr(t.find("\"token\":") + 8);
+        tok = tok.substr(0, tok.find('}'));
+        CHECK(r.command("factoryreset", {{"confirm", "reset"}, {"token", tok}}).find("Type RESET") != std::string::npos);
+        CHECK(called == -1);
+        CHECK(r.command("factoryreset", {{"confirm", "RESET"}, {"token", tok}}).find("expired") != std::string::npos);   // used up
+        t = r.command("resettoken", {});
+        tok = t.substr(t.find("\"token\":") + 8);
+        tok = tok.substr(0, tok.find('}'));
+        simMs += 61000;
+        CHECK(r.command("factoryreset", {{"confirm", "RESET"}, {"token", tok}}).find("expired") != std::string::npos);   // too old
+        t = r.command("resettoken", {});
+        tok = t.substr(t.find("\"token\":") + 8);
+        tok = tok.substr(0, tok.find('}'));
+        CHECK(r.command("factoryreset", {{"confirm", "RESET"}, {"token", tok}, {"all", "1"}}).find("\"ok\":true") != std::string::npos);
+        CHECK(called == 1);
+    }
     meshTests();
     ftcwTests();
     termRelayTests();
