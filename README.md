@@ -50,6 +50,8 @@ The **Terminal** tab: type and send.
   Settings; copy it with any 33 cm receiver. LoRaDecks cannot decode CW.
 - Every message ends with **"&lt;to&gt; DE &lt;your call&gt;"** (or "DE &lt;your call&gt;" when no To call is set),
   unless it already contains your call. The To call fills in from the last "DE" call heard.
+- **Show: This mode / All**: by default the Terminal shows (and plays) only the messages of the kind you send
+  in (LoRa text, CW over LoRa, or your keyed CW); **All** shows everything. Remembered in the browser.
 - Six macro buttons, edited in Settings ({MY} = your call, {TO} = the other station).
 - A message goes out in your next slot, or in the current one if you send it early in your own slot. Until it
   is on the air it is listed under the text box (**waiting** / **this slot** / **sending**) with **✕ Cancel**
