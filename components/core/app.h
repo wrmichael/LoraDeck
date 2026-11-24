@@ -57,7 +57,8 @@ public:
     void gpsGrid(const std::string& grid6);
 
     std::string logPath() const;
-    std::string logText();                                    // the whole ADIF log
+    std::string logText(const std::string& name = std::string());   // the whole ADIF log (of another call: "AC9HP_P")
+    std::string logListJson();                                // every log on the board: [{"name","n","current"}]
     int logCount() const { return logCount_; }
     std::string status() const { std::lock_guard<std::mutex> lk(mtx_); return status_; }
     // "<text> <to> DE <me>" (or "<text> DE <me>"), unless the text already holds "DE <me>".

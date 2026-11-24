@@ -60,6 +60,10 @@ Everything is operated from the web page; the OLED shows status only.
   and log. Second board done.
 - 2026-11-23 evening: 0.2.x running on both boards, "things seem to be working better". Wayne is recruiting more
   users for a wider test of this version. When reports come in: ask for the Console log download from each board.
+- 0.2.10: Wayne: "the log is empty on this unit, it should have 2 QSOs" (the unit whose settings would not save).
+  Per-call logs (<CALL>_log.adi): a call change starts an empty log. Bug: a failed save still switched cfg in
+  memory (new call shown, its empty log) -> now reverted. Log tab "Log for" lists every *_log.adi (/api/logs,
+  /api/log?file=NAME), with a note when the current call has none but others do.
 - 0.2.9: factory reset (Settings card, closed by default: Settings only / Everything; type RESET + confirm +
   one-time code "resettoken" valid 60 s, one try; App::factoryReset hook -> main doFactoryReset: settings =
   remove files, everything = unmount + erase the storage partition (formatted at the next mount); NVS erased;

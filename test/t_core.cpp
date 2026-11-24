@@ -475,6 +475,25 @@ int main() {
         CHECK(r.command("factoryreset", {{"confirm", "RESET"}, {"token", tok}, {"all", "1"}}).find("\"ok\":true") != std::string::npos);
         CHECK(called == 1);
     }
+    {                                                       // one log per call; all of them listed
+        App g;
+        system("rm -rf /tmp/ld_logs && mkdir -p /tmp/ld_logs");
+        g.begin("/tmp/ld_logs");
+        CHECK(g.command("set", {{"call", "AC9HP/P"}}).find("true") != std::string::npos);
+        FILE* f = fopen("/tmp/ld_logs/AC9HP_P_log.adi", "w");
+        fputs("hdr <EOH>\n<CALL:5>W9AIM <EOR>\n<CALL:6>KC9XYZ <EOR>\n", f);
+        fclose(f);
+        CHECK(g.command("set", {{"call", "W9AIM"}}).find("true") != std::string::npos);
+        std::string l = g.logListJson();
+        CHECK(l.find("{\"name\":\"AC9HP_P\",\"n\":2,\"current\":false}") != std::string::npos);
+        CHECK(g.logText("AC9HP_P").find("KC9XYZ") != std::string::npos);
+        CHECK(g.logText("../settings").empty());                  // only log files
+        CHECK(g.logText().empty());                                // W9AIM has none yet
+        App bad;                                                   // a save that fails changes nothing
+        bad.begin("/nonexistent_dir");
+        CHECK(bad.command("set", {{"call", "K9ABC"}}).find("Could not save") != std::string::npos);
+        CHECK(bad.cfg.call.empty());
+    }
     meshTests();
     ftcwTests();
     termRelayTests();

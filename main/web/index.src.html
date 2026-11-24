@@ -142,7 +142,10 @@ h3{margin:4px 0 10px;font-size:16px}
 </section>
 <section id="tab-log" class="hide">
   <div class="card">
-    <div class="row"><h3 style="margin-right:auto">Log <span id="logn" class="hint"></span></h3><a class="b" href="/api/log?dl=1"><button class="b">Download ADIF</button></a></div>
+    <div class="row"><h3 style="margin-right:auto">Log <span id="logn" class="hint"></span></h3>
+      <label id="logPick" style="display:none;gap:6px;align-items:center">Log for <select id="logSel"></select></label>
+      <a class="b" id="logDl" href="/api/log?dl=1"><button class="b">Download ADIF</button></a></div>
+    <p class="hint" id="logNote"></p>
     <table><thead><tr><th>Date</th><th>UTC</th><th>Call</th><th>Grid</th><th>Sent</th><th>Rcvd</th><th>Band</th></tr></thead><tbody id="logrows"></tbody></table>
     <p class="hint"><b>Kept safe:</b> the log is in the board's own flash memory, so it survives power-off, restarts and firmware updates (over Wi-Fi, or the web flasher with "Erase device" unticked). Only a factory reset with "Everything", or the web flasher with "Erase device" ticked, deletes it. Download it now and then as a backup.</p>
   </div>
@@ -498,15 +501,29 @@ async function poll(){
   busy=false;
 }
 // ---- log ----
+// Each station callsign has its own log: list them, show the current one, or the one picked.
+let logFile="";
 async function loadLog(){
-  const t=await (await fetch("/api/log")).text();
+  let list=[];
+  try{list=await (await fetch("/api/logs",{cache:"no-store"})).json();}catch(e){}
+  const cur=list.find(l=>l.current),others=list.filter(l=>!l.current&&l.n>0);
+  const sel=$("logSel");sel.innerHTML="";
+  const opt=(v,t)=>{const o=document.createElement("option");o.value=v;o.textContent=t;sel.appendChild(o);};
+  opt("",(S.call||"this call")+" (now) · "+(cur?cur.n:0));
+  for(const l of others)opt(l.name,l.name.replace(/_/g,"/")+" · "+l.n);
+  if(logFile&&!others.some(l=>l.name===logFile))logFile="";
+  sel.value=logFile;
+  $("logPick").style.display=others.length?"flex":"none";
+  $("logNote").textContent=!logFile&&others.length&&!(cur&&cur.n)?"No contacts under "+(S.call||"this call")+" yet. This board keeps one log per station callsign: earlier contacts are in "+others.map(l=>l.name.replace(/_/g,"/")+" ("+l.n+")").join(", ")+"; pick it above.":"";
+  $("logDl").href="/api/log?dl=1"+(logFile?"&file="+encodeURIComponent(logFile):"");
+  const t=await (await fetch("/api/log"+(logFile?"?file="+encodeURIComponent(logFile):""))).text();
   const rows=[];const re=/<(\w+):(\d+)>/g;
   for(const rec of t.split(/<EOR>/i)){
     const f={};let m;re.lastIndex=0;
     while((m=re.exec(rec))){f[m[1].toUpperCase()]=rec.substr(m.index+m[0].length,+m[2]);}
     if(f.CALL)rows.push(f);
   }
-  $("logn").textContent=rows.length+" contacts";
+  $("logn").textContent=rows.length+" contacts"+(logFile?" ("+logFile.replace(/_/g,"/")+")":"");
   const tb=$("logrows");tb.innerHTML="";
   for(const f of rows.reverse()){
     const tr=document.createElement("tr");
@@ -514,6 +531,7 @@ async function loadLog(){
     tb.appendChild(tr);
   }
 }
+$("logSel").onchange=()=>{logFile=$("logSel").value;loadLog();};
 // ---- settings ----
 function fillSettings(){
   if(!S.cfg)return;

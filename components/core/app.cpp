@@ -6,6 +6,7 @@
 #include <cmath>
 #include <ctime>
 #include <cctype>
+#include <dirent.h>
 #include <iterator>
 #include "morse.h"
 #include "mopp.h"
@@ -688,9 +689,14 @@ void App::loadLog() {
     }
 }
 
-std::string App::logText() {
+std::string App::logText(const std::string& name) {
     std::lock_guard<std::mutex> lk(mtx_);
-    FILE* f = fopen(logPath().c_str(), "r");
+    std::string path = logPath();
+    if (!name.empty()) {                                      // another callsign's log: letters, digits, _ only
+        for (char c : name) if (!isalnum((unsigned char)c) && c != '_') return "";
+        path = dir_ + "/" + name + "_log.adi";
+    }
+    FILE* f = fopen(path.c_str(), "r");
     if (!f) return "";
     std::string all;
     char buf[512];
@@ -698,6 +704,41 @@ std::string App::logText() {
     while ((n = fread(buf, 1, sizeof buf, f)) > 0) all.append(buf, n);
     fclose(f);
     return all;
+}
+
+// Each station callsign has its own log file; list them all, so a log never seems lost after a call change.
+std::string App::logListJson() {
+    std::lock_guard<std::mutex> lk(mtx_);
+    std::string cur = logPath().substr(dir_.size() + 1), o = "[";
+    DIR* d = opendir(dir_.c_str());
+    if (d) {
+        while (struct dirent* e = readdir(d)) {
+            std::string fn = e->d_name, low;
+            for (char c : fn) low += (char)tolower((unsigned char)c);
+            if (low.size() <= 8 || low.compare(low.size() - 8, 8, "_log.adi") != 0) continue;
+            int n = 0;
+            FILE* f = fopen((dir_ + "/" + fn).c_str(), "r");
+            if (f) {
+                char buf[512];
+                std::string tail;
+                size_t k;
+                while ((k = fread(buf, 1, sizeof buf, f)) > 0) {
+                    std::string s = tail + std::string(buf, k);
+                    for (size_t p = 0; (p = s.find("<EOR>", p)) != std::string::npos; p += 5) n++;
+                    for (size_t p = 0; (p = s.find("<eor>", p)) != std::string::npos; p += 5) n++;
+                    tail = s.size() >= 4 ? s.substr(s.size() - 4) : s;  // a marker split between reads
+                    if (tail.find('<') == std::string::npos) tail.clear();
+                }
+                fclose(f);
+            }
+            std::string lowCur;
+            for (char c : cur) lowCur += (char)tolower((unsigned char)c);
+            if (o.size() > 1) o += ',';
+            o += "{\"name\":" + jstr(fn.substr(0, fn.size() - 8)) + ",\"n\":" + jnum(n) + ",\"current\":" + jbool(low == lowCur) + "}";
+        }
+        closedir(d);
+    }
+    return o + "]";
 }
 
 namespace {
@@ -929,8 +970,10 @@ std::string App::command(const std::string& c, const std::map<std::string, std::
         bool radio = n.freqHz != cfg.freqHz || n.sf != cfg.sf || n.bwKhz != cfg.bwKhz || n.cr != cfg.cr || n.powerDbm != cfg.powerDbm;
         bool callChanged = n.call != cfg.call;
         bool modeChanged = n.ftMode != cfg.ftMode || n.meshSlotSec != cfg.meshSlotSec || n.slotSec != cfg.slotSec;
+        Settings old = cfg;
         cfg = n;
         if (!cfg.save(dir_ + "/settings.txt")) {
+            cfg = old;                                        // nothing changes when it cannot be saved
             tr("settings not saved: " + Settings::lastError);
             return err("Could not save the settings: " + Settings::lastError + ". Storage full? See the Console tab.");
         }

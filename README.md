@@ -100,6 +100,12 @@ A floating light shows the transmit state: green = TX on, yellow = past half of 
 timed out; it pulses while transmitting and all of it flashes "No link" when the page loses the board. While the
 page is open and in view you count as present for the watchdog.
 
+## One log per station callsign
+
+Each station callsign has its own log file (`/data/AC9HP_log.adi`, `/data/W9AIM_log.adi`, `/` becomes `_`).
+After a callsign change the Log tab starts empty for the new call; **Log for** lists the logs of the other calls
+on the board with their number of contacts, to view or download them.
+
 ## Where the log is kept
 
 The QSO log (`/data/<CALL>_log.adi`), the settings and the console log are in the board's own flash memory (a

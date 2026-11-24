@@ -95,15 +95,16 @@ static esp_err_t hCmd(httpd_req_t* req) {
     if (c == "conclear") { conlog_clear(); ESP_LOGI("web", "console log cleared"); return sendJson(req, "{\"ok\":true}"); }
     return sendJson(req, s_app->command(c, a));
 }
-static esp_err_t hLog(httpd_req_t* req) {
-    std::string t = s_app->logText();
-    httpd_resp_set_type(req, "text/plain; charset=utf-8");
-    std::string cd = "attachment; filename=\"" + fileCall() + "_log.adi\"";
+static esp_err_t hLog(httpd_req_t* req) {                    // ?file=AC9HP_P for another call's log, ?dl=1 to save
     std::map<std::string, std::string> a;
     parseForm(query(req), a);
+    std::string t = s_app->logText(a["file"]);
+    httpd_resp_set_type(req, "text/plain; charset=utf-8");
+    std::string cd = "attachment; filename=\"" + (a["file"].empty() ? fileCall() : a["file"]) + "_log.adi\"";
     if (a["dl"] == "1") httpd_resp_set_hdr(req, "Content-Disposition", cd.c_str());
     return httpd_resp_send(req, t.data(), t.size());
 }
+static esp_err_t hLogs(httpd_req_t* req) { return sendJson(req, s_app->logListJson()); }
 static esp_err_t hConsole(httpd_req_t* req) {                // console log: ?tail=bytes, ?dl=1 for the whole file
     std::map<std::string, std::string> a;
     parseForm(query(req), a);
@@ -138,6 +139,7 @@ void web_start(App& app) {
         {"/api/log", HTTP_GET, hLog, nullptr},
         {"/api/settings", HTTP_GET, hSettings, nullptr},
         {"/api/console", HTTP_GET, hConsole, nullptr},
+        {"/api/logs", HTTP_GET, hLogs, nullptr},
     };
     for (auto& h : u) httpd_register_uri_handler(srv, &h);
     ota_register(srv, app);
