@@ -44,7 +44,9 @@ Everything is operated from the web page; the OLED shows status only.
 - Two-board test 2026-11-23: no contact because board 1 was on 915.000 (fixed), then because both had AC9HP (a
   station ignores messages from its own call). 0.1.3: second board as AC9HP/P works (host test does exactly
   that); "/" in the call becomes "_" in the log file name; warning when another station sends as our call.
-- Next: second board, first real two-board QSO; then firmware update from a flasher web page, settings import/
+- **First real two-board FT-LoRa QSO 2026-11-23**: AC9HP and club call W9AIM, Auto CQ / Auto hunt, full sequence
+  and log. Second board done.
+- Next: firmware update from a flasher web page, settings import/
   copy, CW ID beacon, LoRa APRS, mDNS, Heltec V4 support (FEM/PA enable pins, 16 MB flash). Full list in
   docs/ROADMAP.md.
 - Planned new mode **FT-MESH** (2026-11-23): FT-LoRa where every station also repeats (managed flooding, TTL,
