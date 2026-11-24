@@ -197,6 +197,7 @@ h3{margin:4px 0 10px;font-size:16px}
   </div>
   <div class="card">
     <h3>Update LoRaDeck</h3>
+    <div class="kv" style="margin-bottom:10px"><span>This board</span><span id="otaCur">–</span><span>Latest Stable</span><span id="otaVs">–</span><span>Latest Beta</span><span id="otaVb">–</span></div>
     <div class="row"><button class="b" id="otaStable">Install latest Stable</button><button class="b" id="otaBeta">Install latest Beta</button></div>
     <div class="row" style="margin-top:8px"><input type="file" id="otaFile" accept=".bin" style="max-width:360px"><button class="b" id="otaGo">Install this file</button></div>
     <p class="hint">The Install latest buttons fetch the firmware from the <a href="https://wrmichael.github.io/LoraDeck/" target="_blank" rel="noopener">flasher page</a>, so this browser needs internet (the board on your home network, or a phone with mobile data). Or download loradeck-x.y.z.bin there and install the file. LoRaDeck stops transmitting, keeps its settings and log, and restarts when done; if the new version does not start properly it goes back to the old one.</p>
@@ -248,7 +249,7 @@ document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
   document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("on",x===b));
   ["op","term","log","set","con","about"].forEach(t=>$("tab-"+t).classList.toggle("hide",t!==b.dataset.tab));
   if(b.dataset.tab==="log")loadLog();
-  if(b.dataset.tab==="set")fillSettings();
+  if(b.dataset.tab==="set"){fillSettings();otaVersions();}
   if(b.dataset.tab==="con")loadCon();
 });
 // ---- terminal ----
@@ -478,6 +479,20 @@ async function otaLatest(ch){
     const img=new Uint8Array(await (await fetch(base+part.path,{cache:"no-store"})).arrayBuffer());
     await otaSend(img);
   }catch(e){m.textContent="Could not reach the flasher site: this browser needs internet (or download the .bin there and use Install this file).";}
+}
+// the versions on the flasher site (needs internet in this browser; quietly "–" without)
+let otaChecked=0;
+function vcmp(a,b){const x=String(a).split(".").map(Number),y=String(b).split(".").map(Number);for(let i=0;i<3;i++){if((x[i]||0)!==(y[i]||0))return (x[i]||0)-(y[i]||0);}return 0;}
+function otaVersions(){
+  $("otaCur").textContent=S.ver||"–";
+  if(Date.now()-otaChecked<60000)return;otaChecked=Date.now();
+  for(const [ch,id] of [["stable","otaVs"],["beta","otaVb"]]){
+    const ac=new AbortController();setTimeout(()=>ac.abort(),5000);
+    fetch(OTA_SITE+(ch==="stable"?"stable/":"")+"manifest.json",{cache:"no-store",signal:ac.signal}).then(r=>{if(!r.ok)throw 0;return r.json();}).then(m=>{
+      const c=vcmp(m.version,S.ver);
+      $(id).textContent=m.version+(c>0?"  (newer)":c===0?"  (installed)":"  (older)");
+    }).catch(()=>{$(id).textContent=ch==="stable"?"not released yet, or no internet in this browser":"no internet in this browser";});
+  }
 }
 $("otaStable").onclick=()=>otaLatest("stable");
 $("otaBeta").onclick=()=>otaLatest("beta");
