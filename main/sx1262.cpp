@@ -9,7 +9,9 @@
 #include "driver/spi_master.h"
 #include "driver/gpio.h"
 #include "esp_log.h"
+#include "esp_timer.h"
 #include "esp_rom_sys.h"
+#include "morse.h"
 
 static const char* TAG = "sx1262";
 
@@ -24,7 +26,7 @@ enum : uint8_t {
     C_READ_BUF = 0x1E, C_SET_IRQ = 0x08, C_GET_IRQ = 0x12, C_CLR_IRQ = 0x02, C_DIO2_RFSW = 0x9D,
     C_DIO3_TCXO = 0x97, C_SET_FREQ = 0x86, C_SET_PKT_TYPE = 0x8A, C_SET_TX_PARAMS = 0x8E,
     C_SET_MOD = 0x8B, C_SET_PKT = 0x8C, C_SET_BUF_BASE = 0x8F, C_GET_RX_BUF = 0x13, C_GET_PKT_STATUS = 0x14,
-    C_GET_STATUS = 0xC0,
+    C_GET_STATUS = 0xC0, C_SET_TX_CW = 0xD1,
 };
 enum : uint16_t { IRQ_TX_DONE = 0x0001, IRQ_RX_DONE = 0x0002, IRQ_HDR_ERR = 0x0020, IRQ_CRC_ERR = 0x0040, IRQ_TIMEOUT = 0x0200 };
 static const uint16_t REG_SYNC = 0x0740, REG_OCP = 0x08E7, REG_IQ = 0x0736;
@@ -34,6 +36,10 @@ static SemaphoreHandle_t s_irq, s_mtx;
 static LoraConfig s_cfg;
 static std::atomic<bool> s_sending{false};
 static sx1262::Stats s_stats;
+static SemaphoreHandle_t s_cwGo;
+static std::string s_cwText;
+static int s_cwWpm = 20;
+static std::atomic<bool> s_cwAbort{false};
 std::function<void(const uint8_t*, int, int, float)> sx1262::onReceive;
 std::function<void()> sx1262::onSent;
 
@@ -180,6 +186,56 @@ static void radioTask(void*) {
     }
 }
 
+// CW: the carrier on (TX continuous wave) and off (standby with the TCXO running, so it starts again at once).
+// A slower PA ramp (800 us) for softer key clicks.
+static void cwTask(void*) {
+    for (;;) {
+        xSemaphoreTake(s_cwGo, portMAX_DELAY);
+        int unit = 1200 / (s_cwWpm > 0 ? s_cwWpm : 20);
+        int p = s_cfg.powerDbm < -9 ? -9 : s_cfg.powerDbm > 22 ? 22 : s_cfg.powerDbm;
+        xSemaphoreTake(s_mtx, portMAX_DELAY);
+        uint8_t tp[2] = {(uint8_t)(int8_t)p, 0x05};
+        cmd(C_SET_TX_PARAMS, tp, 2);
+        uint8_t xosc = 0x01;
+        cmd(C_SET_STANDBY, &xosc, 1);
+        int64_t t0 = esp_timer_get_time();
+        std::string t = morseClean(s_cwText);
+        for (size_t i = 0; i < t.size() && !s_cwAbort; i++) {
+            if (t[i] == ' ') { vTaskDelay(pdMS_TO_TICKS(unit * 4)); continue; }
+            for (const char* e = morseOf(t[i]); e && *e && !s_cwAbort; e++) {
+                cmd(C_SET_TX_CW, nullptr, 0);
+                vTaskDelay(pdMS_TO_TICKS(unit * (*e == '.' ? 1 : 3)));
+                cmd(C_SET_STANDBY, &xosc, 1);
+                vTaskDelay(pdMS_TO_TICKS(unit));
+            }
+            vTaskDelay(pdMS_TO_TICKS(unit * 2));
+        }
+        cmd(C_SET_STANDBY, &xosc, 1);
+        tp[1] = 0x04;
+        cmd(C_SET_TX_PARAMS, tp, 2);
+        startRx();
+        s_stats.tx++;
+        bool aborted = s_cwAbort;
+        s_cwAbort = false;
+        s_sending = false;
+        xSemaphoreGive(s_mtx);
+        ESP_LOGI(TAG, "CW %s after %lld ms: %s", aborted ? "stopped" : "done", (long long)((esp_timer_get_time() - t0) / 1000), t.c_str());
+        if (sx1262::onSent) sx1262::onSent();
+    }
+}
+
+bool sx1262::sendCw(const std::string& text, int wpm) {
+    if (!s_cwGo || text.empty() || s_sending.exchange(true)) return false;
+    s_cwText = text;
+    s_cwWpm = wpm;
+    s_cwAbort = false;
+    ESP_LOGI(TAG, "CW on %.3f MHz at %d wpm: %s", s_cfg.freqHz / 1e6, wpm, text.c_str());
+    xSemaphoreGive(s_cwGo);
+    return true;
+}
+
+void sx1262::abortTx() { s_cwAbort = true; }
+
 bool sx1262::begin(const LoraConfig& c) {
     gpio_config_t o = {};
     o.pin_bit_mask = (1ULL << P_NSS) | (1ULL << P_RST);
@@ -233,6 +289,8 @@ bool sx1262::begin(const LoraConfig& c) {
     gpio_install_isr_service(0);
     gpio_isr_handler_add(P_DIO1, dio1Isr, nullptr);
     xTaskCreate(radioTask, "lora", 4096, nullptr, 10, nullptr);
+    s_cwGo = xSemaphoreCreateBinary();
+    xTaskCreate(cwTask, "cw", 3072, nullptr, 9, nullptr);
     xSemaphoreTake(s_mtx, portMAX_DELAY);
     applyConfig(c);
     xSemaphoreGive(s_mtx);

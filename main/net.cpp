@@ -48,7 +48,8 @@ static void onEvent(void*, esp_event_base_t base, int32_t id, void* data) {
         s_ip = b;
         s_state = "connected";
         s_retry = 0;
-        ESP_LOGI(TAG, "home network connected, address %s", b);
+        ESP_LOGI(TAG, "home network connected, address %s; asking NTP for the time", b);
+        sntp_restart();                         // internet time right away, not at the next poll
     }
 }
 
@@ -89,7 +90,13 @@ void net_start(App& app) {
     esp_wifi_start();
     esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
     esp_sntp_setservername(0, "pool.ntp.org");
-    sntp_set_time_sync_notification_cb([](struct timeval*) { clk::setUtcMs(clk::utcMs()); ESP_LOGI(TAG, "clock set from NTP"); });
+    sntp_set_sync_interval(15 * 60 * 1000);   // every 15 minutes: the board's clock drifts a little
+    // SNTP has already set the clock when this is called. A GPS with PPS set within 30 minutes stays in charge:
+    // the clock is then only marked, and the GPS corrects it again within a second.
+    sntp_set_time_sync_notification_cb([](struct timeval*) {
+        clk::markSet(clk::mayOverride(clk::SRC_NTP) ? clk::SRC_NTP : clk::source());
+        ESP_LOGI(TAG, "clock set from NTP");
+    });
     esp_sntp_init();
     ESP_LOGI(TAG, "hotspot \"%s\" at 192.168.4.1%s", s_ssid.c_str(), sta ? ", joining the home network" : "");
 }

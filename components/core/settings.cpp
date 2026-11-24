@@ -22,6 +22,14 @@ bool callOk(const std::string& s) {
     for (char c : s) if (!isalnum((unsigned char)c) && c != '/') return false;
     return true;
 }
+// GPIOs the Heltec V3 uses itself (radio, OLED, Vext, console) or that are not usable
+bool pinOk(long p) {
+    if (p == -1) return true;
+    if (p < 0 || p > 48 || (p >= 22 && p <= 32)) return false;   // 22-25 do not exist, 26-32 are the flash
+    static const int used[] = {8, 9, 10, 11, 12, 13, 14, 17, 18, 21, 36, 43, 44};
+    for (int u : used) if (p == u) return false;
+    return true;
+}
 bool gridOk(const std::string& s) {
     if (s.size() != 4 && s.size() != 6) return false;
     if (!isalpha((unsigned char)s[0]) || !isalpha((unsigned char)s[1]) || !isdigit((unsigned char)s[2]) || !isdigit((unsigned char)s[3]))
@@ -29,15 +37,18 @@ bool gridOk(const std::string& s) {
     if (s.size() == 6 && (!isalpha((unsigned char)s[4]) || !isalpha((unsigned char)s[5]))) return false;
     return true;
 }
-const char* const kKeys[] = {"call", "grid", "cqTag", "opMode", "maxRetries", "useRR73", "confirmQso", "cqParity",
-                             "slotSec", "watchdogMin", "freqHz", "sf", "bwKhz", "cr", "powerDbm", "apSsid", "apPass",
-                             "staSsid", "staPass", "adifMode", "logHost", "logPort"};
+const char* const kKeys[] = {"call", "operator", "grid", "cqTag", "opMode", "maxRetries", "useRR73", "confirmQso", "cqParity",
+                             "slotSec", "watchdogMin", "ftMode", "meshSlotSec", "meshHops", "meshRelay", "cwWpm", "cwIdMin", "freqHz", "sf", "bwKhz", "cr", "powerDbm", "apSsid", "apPass",
+                             "staSsid", "staPass", "adifMode", "adifMesh", "adifChat", "logHost", "logPort",
+                             "gpsRx", "gpsTx", "gpsBaud", "gpsPps", "gpsGrid",
+                             "macro1", "macro2", "macro3", "macro4", "macro5", "macro6"};
 bool secret(const std::string& k) { return k == "apPass" || k == "staPass"; }
 }
 
 bool Settings::set(const std::string& k, const std::string& v) {
     long n = 0;
     if (k == "call") { std::string u = upper(v); if (!u.empty() && !callOk(u)) return false; call = u; return true; }
+    if (k == "operator") { std::string u = upper(v); if (!u.empty() && !callOk(u)) return false; operatorCall = u; return true; }
     if (k == "grid") { std::string u = upper(v); if (!u.empty() && !gridOk(u)) return false;
                        if (u.size() == 6) { u[4] = (char)tolower(u[4]); u[5] = (char)tolower(u[5]); } grid = u; return true; }
     if (k == "cqTag") {
@@ -55,6 +66,20 @@ bool Settings::set(const std::string& k, const std::string& v) {
     if (k == "cqParity") { if (!toInt(v, 0, 1, n)) return false; cqParity = (int)n; return true; }
     if (k == "slotSec") { if (!toInt(v, 2, 15, n)) return false; slotSec = (int)n; return true; }
     if (k == "watchdogMin") { if (!toInt(v, 0, 120, n)) return false; watchdogMin = (int)n; return true; }
+    if (k.size() == 6 && k.compare(0, 5, "macro") == 0 && k[5] >= '1' && k[5] <= '6') {
+        if (v.size() > 80) return false;
+        for (char c : v) if ((unsigned char)c < 0x20) return false;
+        cwMacro[k[5] - '1'] = upper(v);
+        return true;
+    }
+    if (k == "ftMode") { if (!toInt(v, 0, 1, n)) return false; ftMode = (int)n; return true; }
+    if (k == "meshSlotSec") { if (!toInt(v, 6, 60, n)) return false; meshSlotSec = (int)n; return true; }
+    if (k == "meshHops") { if (!toInt(v, 1, 5, n)) return false; meshHops = (int)n; return true; }
+    if (k == "meshRelay") { if (!toInt(v, 0, 2, n)) return false; meshRelay = (int)n; return true; }
+    if (k == "cwWpm") { if (!toInt(v, 5, 40, n)) return false; cwWpm = (int)n; return true; }
+    if (k == "cwIdMin") { if (!toInt(v, 0, 30, n)) return false; cwIdMin = (int)n; return true; }
+    if (k == "adifMesh") { std::string u = upper(v); if (u.empty() || u.size() > 16) return false; adifMesh = u; return true; }
+    if (k == "adifChat") { std::string u = upper(v); if (u.empty() || u.size() > 16) return false; adifChat = u; return true; }
     if (k == "freqHz") { if (!toInt(v, 150000000, 960000000, n)) return false; freqHz = (uint32_t)n; return true; }
     if (k == "sf") { if (!toInt(v, 7, 12, n)) return false; sf = (int)n; return true; }
     if (k == "bwKhz") { if (!toInt(v, 125, 500, n) || (n != 125 && n != 250 && n != 500)) return false; bwKhz = (int)n; return true; }
@@ -67,11 +92,17 @@ bool Settings::set(const std::string& k, const std::string& v) {
     if (k == "adifMode") { std::string u = upper(v); if (u.empty() || u.size() > 16) return false; adifMode = u; return true; }
     if (k == "logHost") { if (v.size() > 63) return false; logHost = v; return true; }
     if (k == "logPort") { if (!toInt(v, 1, 65535, n)) return false; logPort = (int)n; return true; }
+    if (k == "gpsRx") { if (!toInt(v, -1, 48, n) || !pinOk(n)) return false; gpsRx = (int)n; return true; }
+    if (k == "gpsTx") { if (!toInt(v, -1, 48, n) || !pinOk(n)) return false; gpsTx = (int)n; return true; }
+    if (k == "gpsPps") { if (!toInt(v, -1, 48, n) || !pinOk(n)) return false; gpsPps = (int)n; return true; }
+    if (k == "gpsBaud") { if (!toInt(v, 4800, 921600, n)) return false; gpsBaud = (int)n; return true; }
+    if (k == "gpsGrid") { if (!toInt(v, 0, 1, n)) return false; gpsGrid = n; return true; }
     return false;
 }
 
 std::string Settings::get(const std::string& k) const {
     if (k == "call") return call;
+    if (k == "operator") return operatorCall;
     if (k == "grid") return grid;
     if (k == "cqTag") return cqTag;
     if (k == "opMode") return std::to_string(opMode);
@@ -81,6 +112,15 @@ std::string Settings::get(const std::string& k) const {
     if (k == "cqParity") return std::to_string(cqParity);
     if (k == "slotSec") return std::to_string(slotSec);
     if (k == "watchdogMin") return std::to_string(watchdogMin);
+    if (k.size() == 6 && k.compare(0, 5, "macro") == 0 && k[5] >= '1' && k[5] <= '6') return cwMacro[k[5] - '1'];
+    if (k == "ftMode") return std::to_string(ftMode);
+    if (k == "meshSlotSec") return std::to_string(meshSlotSec);
+    if (k == "meshHops") return std::to_string(meshHops);
+    if (k == "meshRelay") return std::to_string(meshRelay);
+    if (k == "cwWpm") return std::to_string(cwWpm);
+    if (k == "cwIdMin") return std::to_string(cwIdMin);
+    if (k == "adifMesh") return adifMesh;
+    if (k == "adifChat") return adifChat;
     if (k == "freqHz") return std::to_string(freqHz);
     if (k == "sf") return std::to_string(sf);
     if (k == "bwKhz") return std::to_string(bwKhz);
@@ -93,6 +133,11 @@ std::string Settings::get(const std::string& k) const {
     if (k == "adifMode") return adifMode;
     if (k == "logHost") return logHost;
     if (k == "logPort") return std::to_string(logPort);
+    if (k == "gpsRx") return std::to_string(gpsRx);
+    if (k == "gpsTx") return std::to_string(gpsTx);
+    if (k == "gpsPps") return std::to_string(gpsPps);
+    if (k == "gpsBaud") return std::to_string(gpsBaud);
+    if (k == "gpsGrid") return gpsGrid ? "1" : "0";
     return "";
 }
 

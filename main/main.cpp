@@ -56,7 +56,9 @@ static void oledTask(void*) {
         time_t t = (time_t)(clk::utcMs() / 1000);
         struct tm tm;
         gmtime_r(&t, &tm);
-        if (clk::utcValid()) snprintf(line, sizeof line, "%02d:%02d:%02dZ %s", tm.tm_hour, tm.tm_min, tm.tm_sec, g.tx ? "TX" : g.txEn ? "tx on" : "");
+        static const char srcCh[] = {' ', 'B', 'G', 'N', 'P'};    // browser, GPS, NTP, GPS+PPS
+        if (clk::utcValid()) snprintf(line, sizeof line, "%02d:%02d:%02dZ%c %s", tm.tm_hour, tm.tm_min, tm.tm_sec,
+                                      srcCh[(int)clk::source() % 5], g.tx ? "TX" : g.txEn ? "tx on" : "");
         else snprintf(line, sizeof line, "clock not set");
         oled::text(0, 2, line, g.tx);
         std::string ip = net_ip();
@@ -99,11 +101,19 @@ extern "C" void app_main(void) {
     sx1262::onReceive = [](const uint8_t* d, int n, int rssi, float snr) { s_app.onPacket(d, n, rssi, snr); };
     sx1262::onSent = [] { s_app.onTxDone(); };
     bool radioOk = sx1262::begin(radioCfg());
+    s_app.airMs = sx1262::airtimeMs(radioCfg(), FTL_PACKET);
     s_app.radioSend = [radioOk](const uint8_t* d, int n) { return radioOk && sx1262::send(d, n); };
-    s_app.radioConfigure = [] { sx1262::configure(radioCfg()); };
+    s_app.radioCw = [radioOk](const std::string& t, int wpm) { return radioOk && sx1262::sendCw(t, wpm); };
+    s_app.radioAbort = [] { sx1262::abortTx(); };
+    s_app.airtime = [](int len) { return sx1262::airtimeMs(radioCfg(), len); };
+    s_app.radioConfigure = [] {
+        sx1262::configure(radioCfg());
+        s_app.airMs = sx1262::airtimeMs(radioCfg(), FTL_PACKET);
+    };
     s_app.onLogged = forwardLog;
 
     net_start(s_app);
+    gps_start(s_app);
     web_start(s_app);
     ota_start();
     vTaskDelay(pdMS_TO_TICKS(2500));                      // the start-up screen for a moment

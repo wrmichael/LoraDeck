@@ -12,22 +12,32 @@ Everything is operated from the web page; the OLED shows status only.
 - Names: mode **FT-LoRa** (ADIF MODE "FT-LORA"), device **LoRaDeck**. Branding: web start screen with the callsign
   in gold (Audiowide) and "LoRaDeck by AC9HP" on a browser's first visit, then on the About page.
 - Own repo; pieces copied once from RigDeck (QSO sequencer) and ft8_lib (message packing), evolving separately.
-- Slots 5 s even/odd (setting, all stations alike). Clock from NTP or the browser.
+- Slots 5 s even/odd (setting, all stations alike). Clock: GPS+PPS > NTP > GPS > browser (clk::Source,
+  mayOverride: a better source set within 30 min wins). RX files a packet under its sent slot (arrival - air -
+  150 ms, nearest slot): clocks may differ by almost half a slot; late TX (> 650 ms into the slot) is skipped.
+- Modes (2026-11-23): FT-LoRa (0xF1, 11 bytes), FT-MESH (0xF2, 14 bytes, every station repeats, 15 s slots,
+  relay windows, weakest first, suppression), Terminal text (0xC1, "<to> DE <me>" appended), real CW (SX1262
+  SetTxContinuousWave keying) for CW ID and Terminal CW; ADIF FT-LORA / FT-MESH / LORA-CHAT / CW.
+- Station call vs operator call (ADIF OPERATOR). Wayne uses club call W9AIM on the second board.
 - Default 917.000 MHz SF9 BW125 CR4/5 14 dBm: inside the ARRL 33 cm 915-921 MHz spread-spectrum block, clear of
   Meshtastic LongFast (906.875) and LoRaWAN. Hams under Part 97: no 500 kHz minimum (that is §15.247, unlicensed).
   No encryption; the protocol is published. Settings warn when the signal crosses 902/928 MHz.
 - Default hotspot LoRaDeck-XXXXXX (MAC suffix), password loradeck1, 192.168.4.1.
 
 ## Code map
-- components/core (host-testable): app (slots, sequencer glue, ADIF log /data/<CALL>_log.adi, state JSON, commands),
+- components/core (host-testable): nmea (RMC/GGA, Maidenhead), morse, app (slots, TX queue, mesh relay, chat/CW, sequencer glue, ADIF log /data/<CALL>_log.adi, state JSON, commands),
   qso (sequencer), settings (key=value /data/settings.txt), ftmsg (pack/unpack), clock.
 - components/ft8msg: ft8_lib message.c/text.c (MIT).
 - main: sx1262 (SPI driver; pins NSS 8, SCK 9, MOSI 10, MISO 11, RST 12, BUSY 13, DIO1 14; TCXO 1.8 V on DIO3; RF
   switch on DIO2), oled (SSD1306 0x3C, SDA 17, SCL 18, RST 21, Vext GPIO 36 low), net, web, ota (/api/otachunk),
-  main (FATFS "storage" at /data, UDP ADIF forwarding), conlog (console log tee → /data/logs/console.txt, 128 KB
+  main (FATFS "storage" at /data, UDP ADIF forwarding), gps (UART1 NMEA, PPS ISR), conlog (console log tee → /data/logs/console.txt, 128 KB
   then console.old.txt; /api/console, Console tab). App::trace hook = one log line per TX/RX/clock/command.
 - Web page: edit main/web/index.src.html, then `python3 tools/build_web.py` (inlines the font) → index.html.
-- Host tests: `sh test/build.sh` (two simulated stations complete a QSO).
+- Host tests: `sh test/build.sh`: packing, NMEA/locator, Morse, two stations (also with clocks ±2 s off, half
+  duplex, even/odd discipline), three-station FT-MESH through a relay, chat, CW, Terminal log.
+- Web flasher: docs/ (GitHub Pages, ESP Web Tools; Beta docs/manifest.json, Stable docs/stable/), built by
+  tools\release.bat on Wayne's PC. Board page: Install latest Stable/Beta from wrmichael.github.io/LoraDeck.
+- No ESP-IDF in the cloud session: board code is only stub-syntax-checked there; Wayne's build is the real test.
 
 ## Build and flash (Wayne's PC)
 - Repo at C:\LoraDeck; ESP-IDF 6.1; `tools\update_flash.bat` pulls, builds (set-target esp32s3 the first time) and
@@ -46,8 +56,6 @@ Everything is operated from the web page; the OLED shows status only.
   that); "/" in the call becomes "_" in the log file name; warning when another station sends as our call.
 - **First real two-board FT-LoRa QSO 2026-11-23**: AC9HP and club call W9AIM, Auto CQ / Auto hunt, full sequence
   and log. Second board done.
-- Next: firmware update from a flasher web page, settings import/
-  copy, CW ID beacon, LoRa APRS, mDNS, Heltec V4 support (FEM/PA enable pins, 16 MB flash). Full list in
-  docs/ROADMAP.md.
-- Planned new mode **FT-MESH** (2026-11-23): FT-LoRa where every station also repeats (managed flooding, TTL,
-  longer slots split into relay windows). Design notes and the open ADIF mode-name question in docs/ROADMAP.md.
+- 0.2.0 (2026-11-23, not yet built on the board): everything in "Modes" and "Clock" above, GPS, operator call,
+  web flasher. Next: test it, enable GitHub Pages, first release; then settings import/copy, LoRa APRS, mDNS,
+  Heltec V4 support. Full list in docs/ROADMAP.md.

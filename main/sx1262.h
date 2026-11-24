@@ -3,6 +3,7 @@
 #pragma once
 #include <cstdint>
 #include <functional>
+#include <string>
 
 struct LoraConfig {
     uint32_t freqHz = 915000000;
@@ -16,6 +17,11 @@ bool begin(const LoraConfig& c);
 void configure(const LoraConfig& c);
 // Send one packet (up to 255 bytes); returns at once. False if busy sending.
 bool send(const uint8_t* data, int len);
+// Key real CW (an unmodulated carrier on the frequency, on and off) for this text; returns at once.
+// False if busy sending. onSent when it ends.
+bool sendCw(const std::string& text, int wpm);
+// Stop CW keying at once (HALT). A packet already on the air finishes (it is short).
+void abortTx();
 // Called from the radio task: a packet arrived (RSSI dBm, SNR dB) / a send finished.
 extern std::function<void(const uint8_t*, int, int, float)> onReceive;
 extern std::function<void()> onSent;

@@ -1,14 +1,17 @@
 # LoRaDeck roadmap
 
+## Done
+- First real two-board FT-LoRa QSO (2026-11-23).
+- 0.2.0: clock offsets up to half a slot tolerated, browser sync with round-trip delay, NTP on connect and every
+  15 min, GPS module (NMEA, optional PPS, grid), operator call (ADIF OPERATOR), console log, browser flasher and
+  Install latest, FT-MESH, Terminal (LoRa text chat and real CW, macros, QSO logging), CW ID.
+
 ## Now
-- Second board, first real two-board FT-LoRa QSO (both on 917.000 MHz, clocks from NTP).
-- Tolerate clock offsets between stations: file a received packet under the slot it was sent in (arrival time
-  minus TX offset and airtime), and tighten the browser time sync.
+- Test 0.2.0 on the boards: FT-MESH with three boards (one out of range of another), Terminal chat, CW on a
+  33 cm receiver, GPS if a module is fitted. Turn on GitHub Pages and make the first release.
 
 ## Next
-- Firmware update from a flasher web page.
 - Settings import / copy between boards.
-- CW ID beacon.
 - LoRa APRS.
 - mDNS (loradeck.local).
 - **Heltec WiFi LoRa 32 V4** support. Same size and pinout as the V3 and the same SX1262 radio, so most code
@@ -26,7 +29,7 @@
 - Other boards: M5Stack Cardputer-Adv + Cap LoRa-1262 (SX1262 on G3/G4/G6/G40/G14/G39/G5, ST7789 screen,
   keyboard, GPS for time and grid).
 
-## FT-MESH (new mode, planned)
+## FT-MESH (built in 0.2.0; design notes)
 Same idea as FT-LoRa (FT8 77-bit messages, automatic logged QSOs, even/odd slots), but **every station is also a
 repeater**, so two stations out of direct range can still complete a QSO through others.
 

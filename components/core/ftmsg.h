@@ -13,12 +13,20 @@ struct Decode {
     int rssi = 0;              // dBm
     float dt = 0;              // seconds after the slot start
     float freq = 0;            // unused for LoRa (kept for the sequencer)
+    int kind = 0;              // 0 FT message, 1 chat (Terminal) message, 2 CW we sent, 3 a relay we sent
+    int hops = 0;              // FT-MESH / chat: how many stations repeated it before we heard it
     std::string text;
 };
 
 // Packet on the air: 1 byte FT-LoRa marker/version + 10 bytes (the 77-bit FT8 payload).
 const int FTL_PACKET = 11;
 const uint8_t FTL_MAGIC = 0xF1;            // "FT-LoRa, version 1"
+// FT-MESH: 0xF2, hop byte (hops left << 4 | hops taken), 16-bit message id, the 10 payload bytes.
+const uint8_t FTM_MAGIC = 0xF2;
+const int FTM_PACKET = 14;
+// Chat (Terminal) text: 0xC1, hop byte, 16-bit message id, up to CHAT_MAX characters of text.
+const uint8_t CHAT_MAGIC = 0xC1;
+const int CHAT_MAX = 120;
 
 bool ftlPack(const std::string& text, uint8_t out[FTL_PACKET]);          // false: cannot be packed
 bool ftlUnpack(const uint8_t* in, int len, std::string& text);           // false: not an FT-LoRa packet

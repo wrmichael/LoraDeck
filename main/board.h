@@ -10,5 +10,7 @@ std::string net_ip();
 std::string net_ssid();          // the hotspot name in use
 void web_start(App& app);
 void ota_register(httpd_handle_t srv, App& app);
-void ota_start();                // mark a freshly updated firmware as good after a minute
+void ota_start();
+void gps_start(App& app);        // optional GPS module (settings gpsRx/gpsTx/gpsBaud/gpsPps)
+std::string gps_status();                // mark a freshly updated firmware as good after a minute
 extern volatile bool g_rebootReq;

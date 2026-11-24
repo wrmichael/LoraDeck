@@ -17,6 +17,52 @@ packet instead of audio tones. Everything an FT8 operator knows carries over:
 - Contacts are logged in ADIF (mode `FT-LORA`, band from the frequency, e.g. 33cm) and can be sent to a logger
   such as Log4OM by UDP.
 
+## FT-MESH
+
+The same FT messages and automatic QSOs, but **every station is also a repeater**: two stations that cannot hear
+each other still complete a QSO through others. Each message carries a hop count and an id; a station repeats
+it once, in relay windows after the sender's, the weakest-heard first, and stays quiet when another station
+already repeated it. Slots are longer (15 s by default) to leave room for the repeats; three hops by default.
+All stations on the channel must use the same mode and slot length. Repeating for others is a setting: off,
+while TX is enabled (you at the page), or always (unattended; check the automatic-control rules, §97.109,
+§97.205, §97.221). Repeating stations identify with the CW ID. Contacts are logged as `FT-MESH`.
+Protocol: docs/FT-LoRa.md.
+
+## Terminal (chat and CW)
+
+The **Terminal** tab: type and send.
+- **LoRa text**: up to 120 characters in a LoRa packet, sent in your next slot; other LoRaDecks show it (and in
+  FT-MESH repeat it).
+- **CW (keyed)**: real CW, the radio's carrier keyed on and off on the channel frequency, at the CW speed in
+  Settings; copy it with any 33 cm receiver. LoRaDecks cannot decode CW.
+- Every message ends with **"&lt;to&gt; DE &lt;your call&gt;"** (or "DE &lt;your call&gt;" when no To call is set),
+  unless it already contains your call. The To call fills in from the last "DE" call heard.
+- Six macro buttons, edited in Settings ({MY} = your call, {TO} = the other station).
+- **Log this contact**: call, mode (LoRa text, logged as `LORA-CHAT`, or `CW`), RST sent/received, name,
+  grid, note. Time on = the first message, time off = now.
+
+The **CW ID** ("DE &lt;call&gt;" in CW) goes out every 10 minutes (setting) while the station transmits, in the
+quiet end of its own slot.
+
+## Clock
+
+The slots need the stations' clocks to agree; LoRaDeck works up to almost half a slot apart (2.5 s with 5 s
+slots) and shows each sender's offset as DT. Sources, best first: a **GPS module with PPS**, **internet time
+(NTP)** when on the home network (asked as soon as it connects, then every 15 minutes), a **GPS module** alone,
+then the **browser** that has the page open (corrected for the network delay). A better source set in the last
+30 minutes is not overridden by a worse one. The header and the OLED show the source (OLED: N = NTP, G = GPS,
+P = GPS+PPS, B = browser).
+
+**GPS module (optional):** any NMEA module (NEO-6M, GT-U7, ATGM336H...) on two free pins, e.g. the module's
+TXD to GPIO 48 and RXD to GPIO 47 (as in Meshtastic's V3 guide), VCC to 3V3, GND to GND; optionally its PPS pin
+to another free GPIO. Set the pins and baud rate in Settings → GPS and restart. With "Grid locator from the GPS
+position" on, the grid follows the GPS (6 characters).
+
+## Station and operator call
+
+**Station callsign** is the call on the air (e.g. a club call, W9AIM); **Operator callsign** is yours (AC9HP)
+when they differ: logged as ADIF `OPERATOR`, with `STATION_CALLSIGN` the station call.
+
 ## Operating
 
 Everything is done from the **web page**: join the LoRaDeck's Wi-Fi hotspot (`LoRaDeck-XXXXXX`, the last six characters of the board's MAC address, shown on the OLED; password `loradeck1`) and
@@ -54,6 +100,19 @@ frequency ± half the bandwidth, must stay inside 902–928 MHz; the Settings pa
 a secondary allocation (do not interfere with primary users) and is restricted in parts of Colorado and Wyoming
 (§97.303). Auto CQ / Auto hunt run with you at the web page as control operator, with the TX watchdog. Or use the
 board unlicensed under Part 15 within its limits. This is a summary, not legal advice — check the current rules.
+
+## Installing and updating
+
+**Browser flasher:** open **https://wrmichael.github.io/LoraDeck/** in Chrome or Edge, connect the board by USB,
+pick Stable or Beta and press **Install LoRaDeck** (leave "Erase device" unticked to keep the log and
+settings). **Over Wi-Fi:** Settings → Update LoRaDeck → **Install latest Stable / Beta** (the browser needs
+internet), or **Install this file** with a downloaded .bin.
+
+**Making a release (maintainer):** put the version in `version.txt`, run `tools\release.bat` (Beta) or
+`tools\release.bat stable` (Beta and Stable). It builds, merges bootloader, partition table, update-slot
+selector and program into one image for address 0x0 (`build\loradeck-x.y.z.bin`, `docs\firmware\`, and
+`docs\stable\` for stable), writes the manifests and offers to commit and push. GitHub Pages must be on:
+repository Settings → Pages → Deploy from branch `main`, folder `/docs`.
 
 ## Building
 

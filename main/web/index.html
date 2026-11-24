@@ -27,7 +27,7 @@ button.b:disabled{opacity:.5}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 @media(max-width:760px){.grid2{grid-template-columns:1fr}}
 #rx{font:14px var(--mono);max-height:52vh;overflow:auto}
-#rx div{display:grid;grid-template-columns:70px 44px 1fr;gap:8px;padding:6px 8px;border-bottom:1px solid var(--line);cursor:pointer}
+#rx div{display:grid;grid-template-columns:70px 40px 44px 1fr;gap:8px;padding:6px 8px;border-bottom:1px solid var(--line);cursor:pointer}
 #rx div:hover{background:var(--pan2)}
 #rx div.cq{color:var(--blu)} #rx div.me{color:var(--amb)} #rx div.tx{color:var(--dim);cursor:default}
 .kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font:14px var(--mono)}
@@ -59,6 +59,13 @@ h3{margin:4px 0 10px;font-size:16px}
 #about .gold{font-size:clamp(36px,10vw,96px);text-align:center;margin:20px 0 6px}
 #about .by{text-align:center;font-size:20px;margin-bottom:16px}
 /* TX light */
+#term{font:14px var(--mono);height:46vh;overflow:auto;background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:8px}
+#term div{padding:3px 0;border-bottom:1px solid #17222a;white-space:pre-wrap;word-break:break-word}
+#term .me{color:var(--amb)} #term .cwl{color:var(--blu)} #term .sys{color:var(--dim);font-size:12px}
+#term .t{color:var(--dim);margin-right:8px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}.seg button{border:0;border-radius:0;min-height:40px}
+#macros button{min-height:38px;padding:6px 10px;font-size:13px}
+#rx div.chat{color:#c9a0ff} #rx div.rly{color:#5f7380;cursor:default}
 #con{font:12px var(--mono);white-space:pre-wrap;word-break:break-all;max-height:60vh;overflow:auto;background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:8px;margin:10px 0 0}
 #tl{position:fixed;right:14px;bottom:14px;z-index:60;display:flex;align-items:center;gap:8px;padding:6px 12px 6px 7px;border-radius:22px;background:rgba(11,16,20,.94);border:1px solid var(--line);font:600 14px var(--mono);color:var(--txt);cursor:pointer}
 #tl i{width:20px;height:20px;border-radius:50%;background:var(--red);box-shadow:0 0 8px var(--red)}
@@ -70,7 +77,7 @@ h3{margin:4px 0 10px;font-size:16px}
 <body>
 <div id="splash" class="hide" title="Tap to continue"><div class="gold" id="spCall">LoRaDeck</div><div class="by">LoRaDeck by AC9HP</div><div class="ver" id="spVer"></div></div>
 <header><span class="brand">LoRaDeck</span><span class="info" id="hinfo">…</span><span class="info" id="hclock"></span></header>
-<nav><button data-tab="op" class="on">Operate</button><button data-tab="log">Log</button><button data-tab="set">Settings</button><button data-tab="con">Console</button><button data-tab="about">About</button></nav>
+<nav><button data-tab="op" class="on">Operate</button><button data-tab="term">Terminal</button><button data-tab="log">Log</button><button data-tab="set">Settings</button><button data-tab="con">Console</button><button data-tab="about">About</button></nav>
 <main>
 <section id="tab-op">
   <div class="grid2">
@@ -94,6 +101,33 @@ h3{margin:4px 0 10px;font-size:16px}
     </div>
   </div>
 </section>
+<section id="tab-term" class="hide">
+  <div class="grid2">
+    <div class="card">
+      <div class="row"><h3 style="margin-right:auto">Terminal</h3><span class="hint" id="termInfo"></span></div>
+      <div id="term"></div>
+      <div class="row" style="margin-top:8px">
+        <span class="seg"><button class="b on" id="viaChat" title="Text in LoRa packets: other LoRaDecks show it">LoRa text</button><button class="b" id="viaCw" title="Real CW, a keyed carrier: copy it on any 33 cm receiver">CW (keyed)</button></span>
+        <label style="display:flex;gap:6px;align-items:center;margin-left:auto">To <input id="termTo" style="width:120px" autocapitalize="characters" placeholder="their call"></label>
+      </div>
+      <div class="row" style="margin-top:8px"><input id="termText" placeholder="Type and press Enter" autocomplete="off" style="flex:1"><button class="b grn" id="termSend">Send</button></div>
+      <div class="row" id="macros" style="margin-top:8px"></div>
+      <p class="hint" id="termHint"></p>
+    </div>
+    <div class="card">
+      <h3>Log this contact</h3>
+      <label class="f"><span>Call</span><input id="lcCall" autocapitalize="characters"></label>
+      <label class="f"><span>Mode</span><select id="lcMode"><option value="chat">LoRa text (Terminal)</option><option value="cw">CW</option></select></label>
+      <label class="f"><span>RST sent</span><input id="lcRstS" placeholder="599"></label>
+      <label class="f"><span>RST received</span><input id="lcRstR" placeholder="599"></label>
+      <label class="f"><span>Name</span><input id="lcName"></label>
+      <label class="f"><span>Grid</span><input id="lcGrid" autocapitalize="characters"></label>
+      <label class="f"><span>Note</span><input id="lcNote"></label>
+      <div class="row"><button class="b grn" id="lcLog">Log QSO</button><button class="b" id="lcClear">Clear</button><span id="lcMsg" class="hint"></span></div>
+      <p class="hint">The time on is when the first message with this call was sent or heard; the time off is now.</p>
+    </div>
+  </div>
+</section>
 <section id="tab-log" class="hide">
   <div class="card">
     <div class="row"><h3 style="margin-right:auto">Log <span id="logn" class="hint"></span></h3><a class="b" href="/api/log?dl=1"><button class="b">Download ADIF</button></a></div>
@@ -103,15 +137,32 @@ h3{margin:4px 0 10px;font-size:16px}
 <section id="tab-set" class="hide">
   <div class="card" id="setform">
     <h3>Station</h3>
-    <label class="f"><span>Callsign</span><input data-k="call" autocapitalize="characters"></label>
+    <label class="f"><span>Station callsign (sent on the air)</span><input data-k="call" autocapitalize="characters"></label>
+    <label class="f"><span>Operator callsign (yours, when the station call is a club or other call; blank = same)</span><input data-k="operator" autocapitalize="characters" placeholder="same as station"></label>
     <label class="f"><span>Grid locator</span><input data-k="grid" autocapitalize="characters"></label>
     <label class="f"><span>Directed CQ (e.g. POTA, blank = plain)</span><input data-k="cqTag" autocapitalize="characters"></label>
+    <h3>Mode</h3>
+    <label class="f"><span>Mode (all stations on the channel alike)</span><select data-k="ftMode"><option value="0">FT-LoRa: direct</option><option value="1">FT-MESH: every station repeats</option></select></label>
+    <label class="f"><span>FT-MESH slot length, seconds</span><input data-k="meshSlotSec" type="number" min="6" max="60"></label>
+    <label class="f"><span>FT-MESH repeats (hops) at most</span><input data-k="meshHops" type="number" min="1" max="5"></label>
+    <label class="f"><span>Repeat for other stations</span><select data-k="meshRelay"><option value="0">no</option><option value="1">while TX is enabled (operator present)</option><option value="2">always (unattended)</option></select></label>
+    <p class="hint">FT-MESH: messages carry a hop count; each station repeats a message once, in relay windows after the sender's, weakest-heard first, and stays quiet when another station already repeated it. Unattended repeating is automatic control under Part 97 (§97.109, §97.205, §97.221): check the rules for your band and station. Each repeating station identifies with the CW ID.</p>
     <h3>FT-LoRa</h3>
     <label class="f"><span>Slot length, seconds (all stations alike)</span><input data-k="slotSec" type="number" min="2" max="15"></label>
     <label class="f"><span>Repeats before giving up</span><input data-k="maxRetries" type="number" min="1" max="20"></label>
     <label class="f"><span>End with RR73 (else RRR)</span><select data-k="useRR73"><option value="1">yes</option><option value="0">no</option></select></label>
     <label class="f"><span>POTA mode: wait for Next QSO</span><select data-k="confirmQso"><option value="0">off</option><option value="1">on</option></select></label>
     <label class="f"><span>TX watchdog, minutes (0 = off)</span><input data-k="watchdogMin" type="number" min="0" max="120"></label>
+    <h3>CW (keyed carrier) and Terminal</h3>
+    <label class="f"><span>CW speed, wpm</span><input data-k="cwWpm" type="number" min="5" max="40"></label>
+    <label class="f"><span>CW ID every, minutes, while transmitting (0 = off)</span><input data-k="cwIdMin" type="number" min="0" max="30"></label>
+    <label class="f"><span>Macro 1</span><input data-k="macro1"></label>
+    <label class="f"><span>Macro 2</span><input data-k="macro2"></label>
+    <label class="f"><span>Macro 3</span><input data-k="macro3"></label>
+    <label class="f"><span>Macro 4</span><input data-k="macro4"></label>
+    <label class="f"><span>Macro 5</span><input data-k="macro5"></label>
+    <label class="f"><span>Macro 6</span><input data-k="macro6"></label>
+    <p class="hint">{MY} = your call, {TO} = the other station. "&lt;to&gt; DE &lt;your call&gt;" is added to each Terminal message unless it already holds your call. CW goes out on the LoRa frequency in the quiet part of your slot; copy it with a 33 cm receiver in CW or SSB.</p>
     <h3>LoRa radio</h3>
     <label class="f"><span>Frequency, Hz</span><input data-k="freqHz" type="number"></label>
     <label class="f"><span>Spreading factor</span><select data-k="sf"><option>7</option><option>8</option><option>9</option><option>10</option><option>11</option><option>12</option></select></label>
@@ -124,8 +175,17 @@ h3{margin:4px 0 10px;font-size:16px}
     <label class="f"><span>Hotspot password (8+)</span><input data-k="apPass" type="password" placeholder="unchanged"></label>
     <label class="f"><span>Home network name</span><input data-k="staSsid"></label>
     <label class="f"><span>Home network password</span><input data-k="staPass" type="password" placeholder="unchanged"></label>
+    <h3>GPS module (optional)</h3>
+    <label class="f"><span>GPS RX pin (to the module's TXD; -1 = no GPS)</span><input data-k="gpsRx" type="number" min="-1" max="48"></label>
+    <label class="f"><span>GPS TX pin (to the module's RXD; -1 = not wired)</span><input data-k="gpsTx" type="number" min="-1" max="48"></label>
+    <label class="f"><span>GPS baud rate</span><select data-k="gpsBaud"><option>4800</option><option>9600</option><option>38400</option><option>57600</option><option>115200</option></select></label>
+    <label class="f"><span>PPS pin (exact second; -1 = none)</span><input data-k="gpsPps" type="number" min="-1" max="48"></label>
+    <label class="f"><span>Grid locator from the GPS position</span><select data-k="gpsGrid"><option value="1">yes</option><option value="0">no</option></select></label>
+    <p class="hint">Heltec V3: e.g. RX 48, TX 47 (the pins Meshtastic uses), module powered from 3V3 and GND. GPS settings take effect after a restart. Clock: GPS with PPS, then internet time (NTP, when on the home network), then GPS alone, then the browser.</p>
     <h3>Logging</h3>
-    <label class="f"><span>ADIF mode name</span><input data-k="adifMode"></label>
+    <label class="f"><span>ADIF mode name, FT-LoRa</span><input data-k="adifMode"></label>
+    <label class="f"><span>ADIF mode name, FT-MESH</span><input data-k="adifMesh"></label>
+    <label class="f"><span>ADIF mode name, Terminal text contacts</span><input data-k="adifChat"></label>
     <label class="f"><span>Send each QSO to (UDP host, e.g. Log4OM PC)</span><input data-k="logHost" placeholder="off"></label>
     <label class="f"><span>UDP port</span><input data-k="logPort" type="number"></label>
     <div class="row" style="margin-top:12px"><button class="b grn" id="save">Save</button><button class="b" id="restart">Restart</button><a href="/api/settings"><button class="b">Export settings</button></a><span id="setmsg" class="hint"></span></div>
@@ -133,14 +193,16 @@ h3{margin:4px 0 10px;font-size:16px}
   </div>
   <div class="card">
     <h3>Update LoRaDeck</h3>
-    <div class="row"><input type="file" id="otaFile" accept=".bin" style="max-width:360px"><button class="b" id="otaGo">Install this file</button></div>
-    <p class="hint" id="otaMsg">Choose loradeck-x.y.z.bin. LoRaDeck stops transmitting, keeps its settings and log, and restarts when done.</p>
+    <div class="row"><button class="b" id="otaStable">Install latest Stable</button><button class="b" id="otaBeta">Install latest Beta</button></div>
+    <div class="row" style="margin-top:8px"><input type="file" id="otaFile" accept=".bin" style="max-width:360px"><button class="b" id="otaGo">Install this file</button></div>
+    <p class="hint">The Install latest buttons fetch the firmware from the <a href="https://wrmichael.github.io/LoraDeck/" target="_blank" rel="noopener">flasher page</a>, so this browser needs internet (the board on your home network, or a phone with mobile data). Or download loradeck-x.y.z.bin there and install the file. LoRaDeck stops transmitting, keeps its settings and log, and restarts when done; if the new version does not start properly it goes back to the old one.</p>
+    <p class="hint" id="otaMsg"></p>
   </div>
 </section>
 <section id="tab-con" class="hide">
   <div class="card">
     <h3>Radio</h3>
-    <div class="kv"><span>Settings</span><span id="rsCfg">–</span><span>Packets sent</span><span id="rsTx">–</span><span>Packets received</span><span id="rsRx">–</span><span>Received with errors</span><span id="rsErr">–</span><span>Last received</span><span id="rsLast">–</span></div>
+    <div class="kv"><span>Settings</span><span id="rsCfg">–</span><span>Packets sent</span><span id="rsTx">–</span><span>Packets received</span><span id="rsRx">–</span><span>Received with errors</span><span id="rsErr">–</span><span>Last received</span><span id="rsLast">–</span><span>Clock</span><span id="rsClk">–</span><span>GPS</span><span id="rsGps">–</span></div>
     <p class="hint">Both stations need the same frequency, SF, bandwidth, coding rate and slot length. "Received with errors" going up while nothing is heard means a signal is there but does not decode (settings differ, or too strong at very short range: turn the power down or move the boards apart).</p>
   </div>
   <div class="card">
@@ -180,11 +242,60 @@ function callName(){return (S.call&&S.call.length)?S.call:"LoRaDeck";}
 // ---- tabs ----
 document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
   document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("on",x===b));
-  ["op","log","set","con","about"].forEach(t=>$("tab-"+t).classList.toggle("hide",t!==b.dataset.tab));
+  ["op","term","log","set","con","about"].forEach(t=>$("tab-"+t).classList.toggle("hide",t!==b.dataset.tab));
   if(b.dataset.tab==="log")loadLog();
   if(b.dataset.tab==="set")fillSettings();
   if(b.dataset.tab==="con")loadCon();
 });
+// ---- terminal ----
+let via="chat",lcStart=0,lastDeSeen="";
+const termLines=[];
+function termAdd(d){
+  const el=$("term"),atBottom=el.scrollTop+el.clientHeight>=el.scrollHeight-20;
+  const div=document.createElement("div");
+  div.className=d.k===2?"cwl me":d.snr===99?"me":"";
+  const t=document.createElement("span");t.className="t";t.textContent=utc(d.t||Date.now()).substr(0,5)+(d.snr===99?" >":" "+d.snr);
+  div.appendChild(t);div.appendChild(document.createTextNode((d.k===2?"CW: ":"")+d.text+(d.h&&d.snr!==99?"  (via "+d.h+")":"")));
+  el.appendChild(div);while(el.children.length>200)el.removeChild(el.firstChild);
+  if(atBottom)el.scrollTop=el.scrollHeight;
+  if(!lcStart)lcStart=d.t||Date.now();
+}
+function termSys(txt){const div=document.createElement("div");div.className="sys";div.textContent=txt;$("term").appendChild(div);$("term").scrollTop=$("term").scrollHeight;}
+function setVia(v){via=v;$("viaChat").classList.toggle("on",v==="chat");$("viaCw").classList.toggle("on",v==="cw");$("lcMode").value=v;termHints();}
+$("viaChat").onclick=()=>setVia("chat");$("viaCw").onclick=()=>setVia("cw");
+function termHints(){
+  if(!S.call){$("termHint").textContent="Set your callsign in Settings first.";return;}
+  $("termHint").textContent=via==="chat"?"LoRa text goes out in your next slot ("+S.slotSec+" s slots), after any FT message; other LoRaDecks show it here."+(S.mode==="FT-MESH"?" In FT-MESH it is repeated like the FT messages.":"")
+    :"Real CW at "+S.wpm+" wpm in the quiet part of your next slot. A long message runs over into the next slots. LoRaDecks cannot decode CW: listen on a 33 cm receiver.";
+  $("termInfo").textContent=S.mode+" · "+S.slotSec+" s slots"+(S.tx&&(S.tx.chatQ||S.tx.cwQ)?" · waiting: "+(S.tx.chatQ+S.tx.cwQ):"");
+}
+async function termSend(text){
+  if(!text.trim())return;
+  const to=$("termTo").value.trim().toUpperCase();
+  const r=await cmd(via,{text,to});
+  if(!r.ok){termSys(r.err);return;}
+  termSys((via==="cw"?"CW queued: ":"queued: ")+r.text);
+  if(!lcStart)lcStart=Date.now();
+  if(to&&!$("lcCall").value)$("lcCall").value=to;
+}
+$("termSend").onclick=()=>{termSend($("termText").value);$("termText").value="";};
+$("termText").onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();$("termSend").onclick();}};
+function macros(){
+  const el=$("macros");el.innerHTML="";
+  for(let i=1;i<=6;i++){
+    const m=S.cfg&&S.cfg["macro"+i];if(!m)continue;
+    const b=document.createElement("button");b.className="b";
+    b.textContent=m.replace(/\{MY\}/g,S.call||"MY").replace(/\{TO\}/g,($("termTo").value||"TO").toUpperCase()).substr(0,22);
+    b.title=m;b.onclick=()=>termSend(m);el.appendChild(b);
+  }
+}
+$("termTo").oninput=macros;
+$("lcLog").onclick=async()=>{
+  const r=await cmd("logchat",{call:$("lcCall").value,mode:$("lcMode").value,rstS:$("lcRstS").value,rstR:$("lcRstR").value,name:$("lcName").value,grid:$("lcGrid").value,note:$("lcNote").value,start:lcStart||Date.now()});
+  $("lcMsg").textContent=r.ok?"Logged":r.err;
+  if(r.ok){termSys("logged "+$("lcCall").value.toUpperCase());["lcCall","lcRstS","lcRstR","lcName","lcGrid","lcNote"].forEach(i=>$(i).value="");lcStart=0;}
+};
+$("lcClear").onclick=()=>{["lcCall","lcRstS","lcRstR","lcName","lcGrid","lcNote"].forEach(i=>$(i).value="");lcStart=0;$("lcMsg").textContent="";};
 // ---- console log ----
 let conBusy=false;
 async function loadCon(){
@@ -215,18 +326,18 @@ function renderRx(){
   for(const d of rxList){
     const div=document.createElement("div");
     const me=S.call&&(" "+d.text+" ").includes(" "+S.call+" ");
-    div.className=d.snr===99?"tx":d.text.startsWith("CQ ")?"cq":me?"me":"";
-    div.innerHTML=`<span>${utc(d.t)}</span><span>${d.snr===99?"TX":d.snr}</span><span></span>`;
-    div.lastChild.textContent=d.text;
-    if(d.snr!==99)div.onclick=async()=>{const r=await cmd("pick",{id:d.id});if(!r.ok)alert(r.err);poll();};
+    div.className=d.k===3?"rly":d.k===1?"chat":d.snr===99?"tx":d.text.startsWith("CQ ")?"cq":me?"me":"";
+    div.innerHTML=`<span>${utc(d.t)}</span><span>${d.snr===99?"TX":d.snr}</span><span title="clock offset of the sender, s">${d.snr===99?"":(d.dt>=0?"+":"")+d.dt.toFixed(1)}</span><span></span>`;
+    div.lastChild.textContent=(d.k===3?"↻ ":d.k===2?"CW: ":d.k===1?"✉ ":"")+d.text+(d.h&&d.snr!==99?"  ↻"+d.h:"");
+    if(d.snr!==99&&d.k===0)div.onclick=async()=>{const r=await cmd("pick",{id:d.id});if(!r.ok)alert(r.err);poll();};
     el.appendChild(div);
   }
   if(atBottom)el.scrollTop=el.scrollHeight;
 }
 function render(){
   const tx=S.tx||{};
-  $("hinfo").textContent=`${callName()}  ${(S.radio.freq/1e6).toFixed(3)} MHz ${S.radio.band||""}  SF${S.radio.sf} BW${S.radio.bw}  ${S.radio.pwr} dBm`;
-  $("hclock").textContent=S.clock?utc(S.utc)+" UTC":"clock not set";
+  $("hinfo").textContent=`${callName()}${S.opCall&&S.opCall!==S.call?" (op "+S.opCall+")":""}  ${(S.radio.freq/1e6).toFixed(3)} MHz ${S.radio.band||""}  SF${S.radio.sf} BW${S.radio.bw}  ${S.radio.pwr} dBm`;
+  $("hclock").textContent=S.clock?utc(S.utc)+" UTC · "+S.clkSrc:"clock not set";
   $("txen").textContent=tx.en?"TX enabled":"Enable TX";
   $("txen").classList.toggle("on",!!tx.en);
   document.querySelectorAll("[data-op]").forEach(b=>b.classList.toggle("on",+b.dataset.op===tx.op));
@@ -234,7 +345,7 @@ function render(){
   $("qdx").textContent=tx.dx||"–";$("qgrid").textContent=tx.dxGrid||"–";
   $("qs").textContent=tx.rptS>-99?tx.rptS:"–";$("qr").textContent=tx.rptR>-99?tx.rptR:"–";
   $("qnext").textContent=tx.text||"–";
-  $("qslot").textContent=(tx.txParity?"odd":"even")+" slots, "+S.slotSec+" s";
+  $("qslot").textContent=(tx.txParity?"odd":"even")+" slots, "+S.slotSec+" s, "+S.mode+(S.mode==="FT-MESH"?(S.relay?", repeating ("+S.hops+" hops)":", not repeating"):"");
   $("par").textContent=(S.cfg&&S.cfg.cqParity==="1")?"Odd slots":"Even slots";
   const ph=S.phase/(S.slotSec*1000);$("slotbar").firstChild.style.width=(ph*100).toFixed(1)+"%";
   $("slotbar").classList.toggle("mine",S.parity===tx.txParity&&!!tx.en);
@@ -245,7 +356,11 @@ function render(){
     $("rsCfg").textContent=`${(S.radio.freq/1e6).toFixed(3)} MHz SF${S.radio.sf} BW${S.radio.bw} CR4/${S.radio.cr} ${S.radio.pwr} dBm, ${S.slotSec} s slots`;
     $("rsTx").textContent=S.rs.tx;$("rsRx").textContent=S.rs.rx;$("rsErr").textContent=S.rs.err;
     $("rsLast").textContent=S.rs.rx?`${S.rs.rssi} dBm, SNR ${S.rs.snr} dB`:"nothing yet";
+    $("rsClk").textContent=S.clock?`${S.clkSrc}, set ${S.clkAge<120?S.clkAge+" s":Math.round(S.clkAge/60)+" min"} ago`:"not set";
+    $("rsGps").textContent=S.gps||"–";
   }
+  if(S.lastDe&&S.lastDe!==lastDeSeen){lastDeSeen=S.lastDe;if(!$("termTo").value||document.activeElement!==$("termTo"))$("termTo").value=S.lastDe;if(!$("lcCall").value)$("lcCall").value=S.lastDe;macros();}
+  termHints();
   trafficLight(tx);
 }
 function trafficLight(tx){
@@ -259,16 +374,23 @@ async function poll(){
   if(busy)return;busy=true;
   try{
     const ac=new AbortController(),to=setTimeout(()=>ac.abort(),3000);
+    const t0=Date.now();
     const r=await fetch(`/api/state?since=${since}&cfg=${cfgLoaded?0:1}&act=${document.visibilityState==="visible"?1:0}`,{signal:ac.signal});
     clearTimeout(to);
     const j=await r.json();
+    const t1=Date.now(),rtt=t1-t0;
+    const newCfg=!!j.cfg;
     if(j.cfg){S.cfg=j.cfg;cfgLoaded=true;}else j.cfg=S.cfg;
     S=j;fails=0;
-    for(const d of j.rx){rxList.push(d);since=Math.max(since,d.id);}
+    for(const d of j.rx){rxList.push(d);since=Math.max(since,d.id);if(d.k===1||d.k===2)termAdd(d);}
     while(rxList.length>100)rxList.shift();
     if(j.rx.length)renderRx();
     render();
-    if(!S.clock||Math.abs(Date.now()-S.utc)>1500)cmd("time",{ms:Date.now()});
+    if(newCfg)macros();
+    // The board's time is from about the middle of the request. The browser is the last choice:
+    // the board ignores it while GPS or NTP set the clock within the last 30 minutes.
+    const mine=S.clkSrc==="not set"||S.clkSrc==="browser"||S.clkAge>1800;
+    if(rtt<1000&&mine&&(!S.clock||Math.abs((t0+t1)/2-S.utc)>250))cmd("time",{ms:Date.now()+Math.round(rtt/2)});
   }catch(e){if(++fails>=3){$("tl").className="lost";$("tl").lastChild.textContent="No link";}}
   busy=false;
 }
@@ -318,8 +440,28 @@ function crc32(b){let c=0xFFFFFFFF;for(let i=0;i<b.length;i++)c=CRCT[(c^b[i])&25
 $("otaGo").onclick=async()=>{
   const f=$("otaFile").files[0],m=$("otaMsg");if(!f){m.textContent="Choose loradeck-x.y.z.bin first";return;}
   if(!confirm("Install "+f.name+"? LoRaDeck restarts when done."))return;
-  let img=new Uint8Array(await f.arrayBuffer());
-  if(img[0]!==0xE9&&img.length>0x20000)img=img.subarray(0x20000);   // complete flash image: the app starts at 0x20000
+  await otaSend(new Uint8Array(await f.arrayBuffer()));
+};
+const OTA_SITE="https://wrmichael.github.io/LoraDeck/";
+async function otaLatest(ch){
+  const m=$("otaMsg"),base=OTA_SITE+(ch==="stable"?"stable/":"");
+  try{
+    m.textContent="Asking the flasher site for the newest "+ch+" version…";
+    const man=await (await fetch(base+"manifest.json",{cache:"no-store"})).json();
+    if(man.version===S.ver&&!confirm("This board already runs "+man.version+". Install it again?"))return(m.textContent="Nothing installed.");
+    if(man.version!==S.ver&&!confirm(`Install LoRaDeck ${man.version} (${ch})? This board runs ${S.ver}. It restarts when done.`))return;
+    const part=man.builds[0].parts.find(p=>p.offset===0)||man.builds[0].parts[0];
+    m.textContent="Downloading "+man.version+"…";
+    const img=new Uint8Array(await (await fetch(base+part.path,{cache:"no-store"})).arrayBuffer());
+    await otaSend(img);
+  }catch(e){m.textContent="Could not reach the flasher site: this browser needs internet (or download the .bin there and use Install this file).";}
+}
+$("otaStable").onclick=()=>otaLatest("stable");
+$("otaBeta").onclick=()=>otaLatest("beta");
+async function otaSend(img){
+  const m=$("otaMsg");
+  // a complete flasher image (bootloader at 0, partition table at 0x8000): the program starts at 0x20000
+  if(img.length>0x20000&&img[0x8000]===0xAA&&img[0x8001]===0x50)img=img.subarray(0x20000);
   if(img[0]!==0xE9){m.textContent="That file is not LoRaDeck firmware.";return;}
   const P=32768,total=img.length;let resent=0,last=null;
   for(let off=0;off<total;){
@@ -333,7 +475,7 @@ $("otaGo").onclick=async()=>{
     off+=piece.length;last=j;m.textContent=`Sending ${Math.round(off*100/total)} %`+(resent?` (${resent} resent)`:"");
   }
   m.textContent=last&&last.msg?last.msg:"Installed";
-};
+}
 $("showSplash").onclick=()=>splash(true);
 setInterval(poll,700);poll().then(()=>splash(false));
 </script>
