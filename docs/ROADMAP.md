@@ -11,6 +11,12 @@
   33 cm receiver, GPS if a module is fitted. Turn on GitHub Pages and make the first release.
 
 ## Next
+- **Board updates itself from the internet** (no browser in the loop): when on the home network, the board fetches
+  the Stable/Beta manifest and firmware from wrmichael.github.io/LoraDeck itself (esp_https_ota, HTTPS with the
+  CA bundle), checks the version, installs into the other update slot and restarts, with the same roll-back if
+  the new version does not start. Buttons "Check for update" / "Update now" on the page, optional daily check
+  that only reports (never installs while transmitting). For boards out of reach (on a mast). Needs the app
+  part of the image (from 0x20000) or a separate app-only .bin published by release.bat.
 - Settings import / copy between boards.
 - LoRa APRS.
 - mDNS (loradeck.local).

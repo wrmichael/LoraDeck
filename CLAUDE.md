@@ -57,5 +57,6 @@ Everything is operated from the web page; the OLED shows status only.
 - **First real two-board FT-LoRa QSO 2026-11-23**: AC9HP and club call W9AIM, Auto CQ / Auto hunt, full sequence
   and log. Second board done.
 - 0.2.0 (2026-11-23, not yet built on the board): everything in "Modes" and "Clock" above, GPS, operator call,
-  web flasher. Next: test it, enable GitHub Pages, first release; then settings import/copy, LoRa APRS, mDNS,
+  web flasher. Next: test it, enable GitHub Pages, first release; then the board updating itself from the internet
+  (esp_https_ota, no browser), settings import/copy, LoRa APRS, mDNS,
   Heltec V4 support. Full list in docs/ROADMAP.md.
