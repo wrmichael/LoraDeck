@@ -58,6 +58,9 @@ Everything is operated from the web page; the OLED shows status only.
   that); "/" in the call becomes "_" in the log file name; warning when another station sends as our call.
 - **First real two-board FT-LoRa QSO 2026-11-23**: AC9HP and club call W9AIM, Auto CQ / Auto hunt, full sequence
   and log. Second board done.
+- 0.2.3: the 0.2.2 release's program said 0.2.1: CMake read version.txt only when it configured. Now
+  CMAKE_CONFIGURE_DEPENDS on version.txt, release.ps1 runs reconfigure and refuses to publish when the version
+  inside build\loradeck.bin (app image offset 48) differs from version.txt.
 - 0.2.2: Wi-Fi update said "pieces out of order. Start again." (most likely two uploads at once: double tap or
   two tabs). Now: upload id (sid) per upload, the board answers with "have" (where it wants the next piece) and
   the page resumes there; Install buttons locked while sending. Boards on older firmware still have the old

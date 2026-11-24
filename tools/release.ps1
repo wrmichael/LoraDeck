@@ -14,8 +14,15 @@ $ver = (Get-Content version.txt -TotalCount 1).Trim()
 Write-Host "Building LoRaDeck $ver ..." -ForegroundColor Cyan
 
 if (!(Test-Path sdkconfig)) { idf.py set-target esp32s3 }
+idf.py reconfigure | Out-Null                         # picks up a new version.txt
 idf.py build
 if ($LASTEXITCODE -ne 0) { throw "Build failed" }
+
+# The version inside the program must be the one published (the board shows it and compares it).
+$app = [System.IO.File]::ReadAllBytes((Join-Path (Get-Location) "build\loradeck.bin"))
+$inside = [System.Text.Encoding]::ASCII.GetString($app, 48, 32).Trim([char]0)
+if ($inside -ne $ver) { throw "The program says it is ${inside}, version.txt says ${ver}; nothing published (run it again)" }
+Write-Host "Program version: $inside" -ForegroundColor Green
 
 $out = "loradeck-$ver.bin"
 Push-Location build
