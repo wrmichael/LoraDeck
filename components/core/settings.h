@@ -66,6 +66,7 @@ struct Settings {
     std::string json(bool secrets) const;
     bool load(const std::string& path);
     bool save(const std::string& path) const;
+    static std::string lastError;        // why the last save failed (shown on the page)
 };
 
 // Band name for ADIF from a frequency (empty if outside the amateur bands we know).

@@ -446,6 +446,11 @@ int main() {
     CHECK(A.app.withId("hello", "") == "hello DE AC9HP");
     CHECK(A.app.withId("W9AIM DE AC9HP K", "W9AIM") == "W9AIM DE AC9HP K");   // already identified
 
+    {                                                       // a failed save says why
+        Settings c;
+        CHECK(!c.save("/nonexistent_dir/settings.txt") && Settings::lastError.find("cannot open") != std::string::npos);
+        CHECK(c.save("/tmp/ld_save_test.txt") && Settings::lastError.empty());
+    }
     meshTests();
     ftcwTests();
     termRelayTests();

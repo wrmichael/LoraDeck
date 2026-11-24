@@ -12,6 +12,7 @@
 #include "freertos/task.h"
 #include "freertos/semphr.h"
 #include "esp_log.h"
+#include "esp_vfs_fat.h"
 
 static const char* DIR_ = "/data/logs";
 static const char* CUR = "/data/logs/console.txt";
@@ -64,6 +65,12 @@ static void writerTask(void*) {
     for (;;) {
         vTaskDelay(pdMS_TO_TICKS(first ? 200 : 3000));
         xSemaphoreTake(s_file, portMAX_DELAY);
+        // never fill the storage (the QSO log and the settings need it): drop old console lines first
+        uint64_t total = 0, freeB = 0;
+        if (esp_vfs_fat_info("/data", &total, &freeB) == ESP_OK && total && freeB < 256 * 1024) {
+            remove(OLD);
+            if (esp_vfs_fat_info("/data", &total, &freeB) == ESP_OK && freeB < 128 * 1024) remove(CUR);
+        }
         FILE* f = fopen(CUR, "a");
         if (f) {
             bool clock = clk::utcValid();
@@ -90,7 +97,7 @@ static void writerTask(void*) {
             fclose(f);
             if (size > MAX_FILE) {                              // oldest lines go first
                 remove(OLD);
-                rename(CUR, OLD);
+                if (rename(CUR, OLD) != 0) remove(CUR);         // never let it grow without end
             }
         }
         xSemaphoreGive(s_file);

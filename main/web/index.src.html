@@ -219,7 +219,7 @@ h3{margin:4px 0 10px;font-size:16px}
 <section id="tab-con" class="hide">
   <div class="card">
     <h3>Radio</h3>
-    <div class="kv"><span>Settings</span><span id="rsCfg">–</span><span>Packets sent</span><span id="rsTx">–</span><span>Packets received</span><span id="rsRx">–</span><span>Received with errors</span><span id="rsErr">–</span><span>Last received</span><span id="rsLast">–</span><span>Clock</span><span id="rsClk">–</span><span>GPS</span><span id="rsGps">–</span></div>
+    <div class="kv"><span>Settings</span><span id="rsCfg">–</span><span>Packets sent</span><span id="rsTx">–</span><span>Packets received</span><span id="rsRx">–</span><span>Received with errors</span><span id="rsErr">–</span><span>Last received</span><span id="rsLast">–</span><span>Clock</span><span id="rsClk">–</span><span>GPS</span><span id="rsGps">–</span><span>Storage</span><span id="rsFs">–</span></div>
     <p class="hint">Both stations need the same frequency, SF, bandwidth, coding rate and slot length. "Received with errors" going up while nothing is heard means a signal is there but does not decode (settings differ, or too strong at very short range: turn the power down or move the boards apart).</p>
   </div>
   <div class="card">
@@ -445,6 +445,7 @@ function render(){
     $("rsLast").textContent=S.rs.rx?`${S.rs.rssi} dBm, SNR ${S.rs.snr} dB`:"nothing yet";
     $("rsClk").textContent=S.clock?`${S.clkSrc}, set ${S.clkAge<120?S.clkAge+" s":Math.round(S.clkAge/60)+" min"} ago`:"not set";
     $("rsGps").textContent=S.gps||"–";
+    if(S.fs&&S.fs.total){const f=S.fs.free;$("rsFs").textContent=`${f} KB free of ${S.fs.total} KB`+(f<300?" (nearly full: Download, then Clear the console log)":"");$("rsFs").style.color=f<300?"var(--red)":"";}
   }
   if(S.lastDe&&S.lastDe!==lastDeSeen){lastDeSeen=S.lastDe;if(!$("termTo").value||document.activeElement!==$("termTo"))$("termTo").value=S.lastDe;if(!$("lcCall").value)$("lcCall").value=S.lastDe;macros();}
   termHints();

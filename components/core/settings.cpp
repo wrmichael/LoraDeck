@@ -1,4 +1,6 @@
 #include "settings.h"
+#include <cerrno>
+#include <cstring>
 #include <cstdio>
 #include <cstdlib>
 #include <cctype>
@@ -195,16 +197,28 @@ bool Settings::load(const std::string& path) {
     return true;
 }
 
+std::string Settings::lastError;
+
+// Written to a new file first and then renamed, so a power cut cannot leave half a file. If that does not work,
+// the file is written in place (better than not saving at all), and the reason is kept for the page.
 bool Settings::save(const std::string& path) const {
-    std::string tmp = path + ".new";
-    FILE* f = fopen(tmp.c_str(), "w");
-    if (!f) return false;
-    std::string s = serialize(true);
-    bool ok = fwrite(s.data(), 1, s.size(), f) == s.size();
-    ok = fclose(f) == 0 && ok;
-    if (!ok) return false;
-    remove(path.c_str());
-    return rename(tmp.c_str(), path.c_str()) == 0;
+    std::string s = serialize(true), tmp = path + ".new";
+    auto write = [&](const std::string& p, const char* what) {
+        FILE* f = fopen(p.c_str(), "w");
+        if (!f) { lastError = std::string(what) + ": cannot open (" + strerror(errno) + ")"; return false; }
+        bool ok = fwrite(s.data(), 1, s.size(), f) == s.size();
+        if (!ok) lastError = std::string(what) + ": write failed (" + strerror(errno) + ")";
+        if (fclose(f) != 0 && ok) { ok = false; lastError = std::string(what) + ": close failed (" + strerror(errno) + ")"; }
+        return ok;
+    };
+    if (write(tmp, "new file")) {
+        remove(path.c_str());
+        if (rename(tmp.c_str(), path.c_str()) == 0) { lastError.clear(); return true; }
+        lastError = std::string("rename failed (") + strerror(errno) + ")";
+    }
+    remove(tmp.c_str());
+    if (write(path, "settings file")) { lastError.clear(); return true; }
+    return false;
 }
 
 std::string adifBand(uint32_t hz) {

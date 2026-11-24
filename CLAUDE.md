@@ -60,6 +60,10 @@ Everything is operated from the web page; the OLED shows status only.
   and log. Second board done.
 - 2026-11-23 evening: 0.2.x running on both boards, "things seem to be working better". Wayne is recruiting more
   users for a wider test of this version. When reports come in: ask for the Console log download from each board.
+- 0.2.8 (2026-11-24): one node said "Could not save the settings" when changing the call. Cause not known yet
+  (suspect: storage full, e.g. the console log not trimmed). Now: Settings::lastError (errno) in the message,
+  fallback write in place, Console tab shows storage free (state "fs"), conlog drops old lines below 256 KB free
+  and never grows past 128 KB if the rename fails. Asked Wayne for that board's Console log.
 - 0.2.7: Terminal messages repeated in every mode (0xC3 text / 0xC4 CW over LoRa with a path of repeater
   calls; Meshtastic-style: after hearing, weakest first, suppression; FT-MESH: in the quiet part after the
   relay windows); "↻n" and tap-for-details (route, SNR/RSSI, time). Fixed: a Terminal message planned in a

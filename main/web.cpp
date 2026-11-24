@@ -1,6 +1,7 @@
 // Web control page: everything is done from here (the OLED only shows status).
 #include "board.h"
 #include "conlog.h"
+#include "esp_vfs_fat.h"
 #include "sx1262.h"
 #include <cstring>
 #include <cstdlib>
@@ -62,6 +63,11 @@ static esp_err_t hState(httpd_req_t* req) {
     std::string js = s_app->stateJson((uint32_t)strtoul(a["since"].c_str(), nullptr, 10), a["cfg"] == "1");
     js.pop_back();
     js += ",\"net\":\"" + net_status() + "\",\"gps\":\"" + gps_status() + "\"";
+    uint64_t fsTotal = 0, fsFree = 0;
+    esp_vfs_fat_info("/data", &fsTotal, &fsFree);
+    char fs[64];
+    snprintf(fs, sizeof fs, ",\"fs\":{\"total\":%u,\"free\":%u}", (unsigned)(fsTotal / 1024), (unsigned)(fsFree / 1024));
+    js += fs;
     auto st = sx1262::stats();
     char rs[120];
     snprintf(rs, sizeof rs, ",\"rs\":{\"tx\":%u,\"rx\":%u,\"err\":%u,\"rssi\":%d,\"snr\":%.1f}}", (unsigned)st.tx,

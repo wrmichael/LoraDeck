@@ -902,7 +902,10 @@ std::string App::command(const std::string& c, const std::map<std::string, std::
         bool callChanged = n.call != cfg.call;
         bool modeChanged = n.ftMode != cfg.ftMode || n.meshSlotSec != cfg.meshSlotSec || n.slotSec != cfg.slotSec;
         cfg = n;
-        if (!cfg.save(dir_ + "/settings.txt")) return err("Could not save the settings");
+        if (!cfg.save(dir_ + "/settings.txt")) {
+            tr("settings not saved: " + Settings::lastError);
+            return err("Could not save the settings: " + Settings::lastError + ". Storage full? See the Console tab.");
+        }
         syncSeq();
         seq.setOpMode(cfg.opMode);
         if (callChanged) loadLog();
