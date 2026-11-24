@@ -14,3 +14,4 @@ void ota_start();
 void gps_start(App& app);        // optional GPS module (settings gpsRx/gpsTx/gpsBaud/gpsPps)
 std::string gps_status();                // mark a freshly updated firmware as good after a minute
 extern volatile bool g_rebootReq;
+extern volatile bool g_storageBad;   // the storage looks damaged (checked at start)

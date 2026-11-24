@@ -115,6 +115,14 @@ Wi-Fi, or the web flasher with "Erase device" unticked). They are deleted only b
 is logged; only the last ~3 s of console log lines can be lost in a power cut. The Heltec V3 has no SD card
 slot; download the log now and then as a backup.
 
+## Damaged storage
+
+If the board's storage gets damaged (for example by a power cut in the middle of a write), it can no longer
+save settings or contacts. LoRaDeck checks the storage at start; when it looks damaged, the page warns you and
+the Console tab shows **Storage: DAMAGED**. Download the log (Log tab) first, then repair it with **Factory
+reset → Everything** or the web flasher with **"Erase device" ticked**. Console → **Show what is in the
+storage** lists the files and their sizes.
+
 ## Factory reset
 
 Settings → **Factory reset…** (at the bottom, closed by default): choose **Settings only** (the logs are kept)

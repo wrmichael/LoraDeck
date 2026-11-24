@@ -469,9 +469,11 @@ function render(){
     $("rsLast").textContent=S.rs.rx?`${S.rs.rssi} dBm, SNR ${S.rs.snr} dB`:"nothing yet";
     $("rsClk").textContent=S.clock?`${S.clkSrc}, set ${S.clkAge<120?S.clkAge+" s":Math.round(S.clkAge/60)+" min"} ago`:"not set";
     $("rsGps").textContent=S.gps||"–";
-    if(S.fs&&S.fs.total){const f=S.fs.free;$("rsFs").textContent=`${f} KB free of ${S.fs.total} KB`+(f<300?" (nearly full: Download, then Clear the console log)":"");$("rsFs").style.color=f<300?"var(--red)":"";}
+    if(S.fs&&S.fs.bad){$("rsFs").textContent="DAMAGED: "+S.fs.free+" KB free of "+S.fs.total+" KB. Download the log (Log tab), then Settings → Factory reset → Everything, or the web flasher with Erase device ticked.";$("rsFs").style.color="var(--red)";}
+    else if(S.fs&&S.fs.total){const f=S.fs.free;$("rsFs").textContent=`${f} KB free of ${S.fs.total} KB`+(f<300?" (nearly full: Download, then Clear the console log)":"");$("rsFs").style.color=f<300?"var(--red)":"";}
   }
   if(S.lastDe&&S.lastDe!==lastDeSeen){lastDeSeen=S.lastDe;if(!$("termTo").value||document.activeElement!==$("termTo"))$("termTo").value=S.lastDe;if(!$("lcCall").value)$("lcCall").value=S.lastDe;macros();}
+  if(S.fs&&S.fs.bad&&!window._fsWarned){window._fsWarned=true;alert("This board's storage is damaged: settings and contacts cannot be saved.\n\n1. Log tab: Download ADIF (your contacts).\n2. Settings → Factory reset → Everything (repairs it), or the web flasher with Erase device ticked.");}
   termHints();
   renderWaiting();
   trafficLight(tx);

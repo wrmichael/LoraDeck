@@ -68,7 +68,8 @@ static esp_err_t hState(httpd_req_t* req) {
     uint64_t fsTotal = 0, fsFree = 0;
     esp_vfs_fat_info("/data", &fsTotal, &fsFree);
     char fs[64];
-    snprintf(fs, sizeof fs, ",\"fs\":{\"total\":%u,\"free\":%u}", (unsigned)(fsTotal / 1024), (unsigned)(fsFree / 1024));
+    snprintf(fs, sizeof fs, ",\"fs\":{\"total\":%u,\"free\":%u,\"bad\":%s}", (unsigned)(fsTotal / 1024), (unsigned)(fsFree / 1024),
+             g_storageBad ? "true" : "false");
     js += fs;
     auto st = sx1262::stats();
     char rs[120];

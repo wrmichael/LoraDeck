@@ -5,6 +5,9 @@
 #include "oled.h"
 #include "clock.h"
 #include "conlog.h"
+#include <dirent.h>
+#include <sys/stat.h>
+#include <string>
 #include <cstring>
 #include <ctime>
 #include "freertos/FreeRTOS.h"
@@ -52,6 +55,40 @@ static void forwardLog(const std::string& rec) {        // UDP ADIF to a logger 
     freeaddrinfo(res);
 }
 
+// Storage health: a volume whose tables were wiped (all 0xFF) reports no free space and lists junk names. Then
+// the page shows a warning with what to do (download the log, Factory reset -> Everything).
+volatile bool g_storageBad = false;
+static long scanDir(const std::string& dir, int depth, int& bad) {
+    long sum = 0;
+    DIR* d = opendir(dir.c_str());
+    if (!d) return 0;
+    int n = 0;
+    while (struct dirent* e = readdir(d)) {
+        if (++n > 400) { bad++; break; }                  // far more entries than LoRaDeck ever makes
+        std::string name = e->d_name;
+        if (name == "." || name == "..") continue;
+        for (unsigned char c : name) if (c < 0x20 || c >= 0x7F) { bad++; break; }
+        std::string p = dir + "/" + name;
+        struct stat st = {};
+        if (stat(p.c_str(), &st) != 0) continue;
+        if (S_ISDIR(st.st_mode)) { if (depth < 2) sum += scanDir(p, depth + 1, bad); }
+        else sum += (long)st.st_size;
+    }
+    closedir(d);
+    return sum;
+}
+static void storageCheck() {
+    uint64_t total = 0, freeB = 0;
+    if (esp_vfs_fat_info("/data", &total, &freeB) != ESP_OK || !total) return;
+    int bad = 0;
+    long files = scanDir("/data", 0, bad);
+    long used = (long)(total - freeB);
+    // used space far beyond the files (more than 1 MB unaccounted for), or junk names
+    g_storageBad = bad > 0 || used - files > 1024L * 1024;
+    if (g_storageBad) ESP_LOGE(TAG, "storage looks damaged: %ld KB used, %ld KB in files, %d bad names; "
+                               "download the log, then Factory reset -> Everything", used / 1024, files / 1024, bad);
+}
+
 // Factory reset: settings only (the files are removed), or everything (the storage partition is erased; it is
 // formatted when it does not mount at the next start). Then restart with the default hotspot.
 static void doFactoryReset(int what) {
@@ -63,9 +100,16 @@ static void doFactoryReset(int what) {
     ESP_LOGW(TAG, "factory reset: %s", what == 2 ? "everything" : "settings");
     vTaskDelay(pdMS_TO_TICKS(800));
     if (what == 2) {
-        if (s_wl != WL_INVALID_HANDLE) esp_vfs_fat_spiflash_unmount_rw_wl("/data", s_wl);
-        const esp_partition_t* p = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_FAT, "storage");
-        if (p) esp_partition_erase_range(p, 0, p->size);
+        // Format through the file system and its wear levelling (a raw erase under wear levelling can leave a
+        // half-wiped, damaged volume if anything interrupts it). Only if formatting fails: erase it all, which
+        // makes the next start format it.
+        esp_err_t e = esp_vfs_fat_spiflash_format_rw_wl("/data", "storage");
+        ESP_LOGW(TAG, "storage formatted: %s", esp_err_to_name(e));
+        if (e != ESP_OK) {
+            if (s_wl != WL_INVALID_HANDLE) esp_vfs_fat_spiflash_unmount_rw_wl("/data", s_wl);
+            const esp_partition_t* p = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_FAT, "storage");
+            if (p) esp_partition_erase_range(p, 0, p->size);
+        }
     } else {
         remove("/data/settings.txt");
         remove("/data/settings.txt.new");
@@ -133,7 +177,10 @@ extern "C" void app_main(void) {
     mc.max_files = 6;
     mc.allocation_unit_size = 4096;
     if (esp_vfs_fat_spiflash_mount_rw_wl("/data", "storage", &mc, &s_wl) != ESP_OK) ESP_LOGE(TAG, "storage did not mount");
-    else conlog_start();
+    else {
+        storageCheck();
+        conlog_start();
+    }
     s_app.version = esp_app_get_description()->version;
     s_app.trace = [](const std::string& line) { ESP_LOGI("app", "%s", line.c_str()); };
     s_app.begin("/data");

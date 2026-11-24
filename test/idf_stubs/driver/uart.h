@@ -9,3 +9,4 @@ esp_err_t uart_driver_install(uart_port_t, int, int, int, void*, int);
 esp_err_t uart_param_config(uart_port_t, const uart_config_t*);
 esp_err_t uart_set_pin(uart_port_t, int, int, int, int);
 int uart_read_bytes(uart_port_t, void*, uint32_t, int);
+inline const char* esp_err_to_name(esp_err_t) { return ""; }

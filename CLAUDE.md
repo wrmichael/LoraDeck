@@ -63,6 +63,13 @@ Everything is operated from the web page; the OLED shows status only.
   and log. Second board done.
 - 2026-11-23 evening: 0.2.x running on both boards, "things seem to be working better". Wayne is recruiting more
   users for a wider test of this version. When reports come in: ask for the Console log download from each board.
+- 0.2.12: the storage list from that board: /data/logs full of 0xFF-named "directories", settings.txt 0 bytes,
+  0 KB free with 0.6 KB in files = FAT tables / directory clusters read as erased flash (damaged volume; no
+  partition overlap). Cause of the first damage unknown (power cut during a write? it predates factory reset);
+  the 0.2.9 "Everything" raw erase under wear levelling could also leave this if interrupted -> now
+  esp_vfs_fat_spiflash_format_rw_wl (raw erase only as fallback). storageCheck() at start (junk names, > 400
+  entries in a dir, or > 1 MB used beyond the files) -> g_storageBad -> state fs.bad -> red Storage line and a
+  one-time alert on the page. Repair advised: download log, web flasher with Erase device ticked.
 - 0.2.11 (2026-11-24): the board whose settings would not save shows Storage "0 KB free of 4148 KB", also after a
   full erase (4148 KB total is right: 0x420000 partition minus wear levelling). Something fills it, or free is
   misreported: added /api/files + Console "Show what is in the storage" (paths, sizes) to find out. Waiting for
