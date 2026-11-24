@@ -16,6 +16,7 @@ struct Decode {
     int kind = 0;              // 0 FT message, 1 chat (Terminal) text, 2 keyed CW we sent, 3 a relay we sent,
                                // 4 CW over LoRa (MOPP, Terminal)
     int wpm = 0;               // MOPP packets (FT-CW, CW over LoRa): the sender's speed, for playing it
+    std::string path;          // Terminal messages: the stations that repeated it, in order
     int hops = 0;              // FT-MESH / chat: how many stations repeated it before we heard it
     std::string text;
 };
@@ -29,6 +30,10 @@ const int FTM_PACKET = 14;
 // Chat (Terminal) text: 0xC1, hop byte, 16-bit message id, up to CHAT_MAX characters of text.
 const uint8_t CHAT_MAGIC = 0xC1;
 const int CHAT_MAX = 120;
+// Repeatable Terminal packets: magic, hop byte, 16-bit id, path length, path (the calls of the stations that
+// repeated it, "W9AIM,KC9RRR"), then the text (0xC3) or a MOPP CW-over-LoRa packet (0xC4).
+const uint8_t TERM_MAGIC = 0xC3, COLR_MAGIC = 0xC4;
+const int PATH_MAX = 40;
 
 bool ftlPack(const std::string& text, uint8_t out[FTL_PACKET]);          // false: cannot be packed
 bool ftlUnpack(const uint8_t* in, int len, std::string& text);           // false: not an FT-LoRa packet

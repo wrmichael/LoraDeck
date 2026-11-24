@@ -25,7 +25,9 @@ struct Settings {
     int ftMode = FT_LORA;
     int meshSlotSec = 15;                // FT-MESH slot length
     int meshHops = 3;                    // how many times a message is repeated at most
-    int meshRelay = RELAY_TX_ON;         // repeat for others: off / while TX is enabled (operator present) / always
+    int meshRelay = RELAY_TX_ON;         // repeat for others (FT-MESH messages; Terminal messages in every mode):
+                                         // off / while the operator is present / always
+    bool colPlain = false;               // CW over LoRa as plain MOPP (Morserino style, never repeated)
     // LoRa-CW: real CW (keyed carrier) for the CW ID and CW messages; chat messages in LoRa packets
     int cwWpm = 20;                      // keyed CW and LoRa-CW from the Terminal
     int ftcwWpm = 40;                    // FT-CW: the speed written into its packets (for playing them as CW)

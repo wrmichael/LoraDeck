@@ -66,6 +66,9 @@ h3{margin:4px 0 10px;font-size:16px}
 #term.only div[data-v]:not(.vis){display:none}
 #term .lab{color:var(--dim);font-size:11px;border:1px solid var(--line);border-radius:4px;padding:0 4px;margin-right:6px}
 #term.only .lab{display:none}
+#term div[data-v]{cursor:pointer}
+#term .rp{color:var(--blu);margin-left:6px}
+#term .det{display:block;color:var(--dim);font-size:12px;margin:3px 0 2px 46px;white-space:normal}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}.seg button{border:0;border-radius:0;min-height:40px}
 #termWait{font:13px var(--mono);margin-top:8px}#termWait div{display:flex;gap:8px;align-items:center;padding:3px 0;color:var(--amb)}
 #termWait div span.s{color:var(--dim);min-width:72px}#termWait button{min-height:30px;padding:2px 10px}
@@ -154,7 +157,7 @@ h3{margin:4px 0 10px;font-size:16px}
     <label class="f"><span>Mode (all stations on the channel alike)</span><select data-k="ftMode"><option value="0">FT-LoRa: direct</option><option value="1">FT-MESH: every station repeats</option><option value="2">FT-CW: FT messages in Morse (LoRa packets)</option></select></label>
     <label class="f"><span>FT-MESH slot length, seconds</span><input data-k="meshSlotSec" type="number" min="6" max="60"></label>
     <label class="f"><span>FT-MESH repeats (hops) at most</span><input data-k="meshHops" type="number" min="1" max="5"></label>
-    <label class="f"><span>Repeat for other stations</span><select data-k="meshRelay"><option value="0">no</option><option value="1">while TX is enabled (operator present)</option><option value="2">always (unattended)</option></select></label>
+    <label class="f"><span>Repeat for other stations (FT-MESH messages; Terminal messages in every mode)</span><select data-k="meshRelay"><option value="0">no</option><option value="1">while you are at the page (TX enabled, or the page open)</option><option value="2">always (unattended)</option></select></label>
     <p class="hint">FT-MESH: messages carry a hop count; each station repeats a message once, in relay windows after the sender's, weakest-heard first, and stays quiet when another station already repeated it. Unattended repeating is automatic control under Part 97 (§97.109, §97.205, §97.221): check the rules for your band and station. Each repeating station identifies with the CW ID.</p>
     <h3>FT-LoRa</h3>
     <label class="f"><span>Slot length, seconds (all stations alike)</span><input data-k="slotSec" type="number" min="2" max="15"></label>
@@ -166,6 +169,7 @@ h3{margin:4px 0 10px;font-size:16px}
     <label class="f"><span>CW speed, wpm (keyed CW and CW over LoRa)</span><input data-k="cwWpm" type="number" min="5" max="40"></label>
     <label class="f"><span>FT-CW speed, wpm (for playing it as sound)</span><input data-k="ftcwWpm" type="number" min="20" max="60"></label>
     <label class="f"><span>CW ID every, minutes, while transmitting (0 = off)</span><input data-k="cwIdMin" type="number" min="0" max="30"></label>
+    <label class="f"><span>CW over LoRa format</span><select data-k="colPlain"><option value="0">LoRaDeck (can be repeated)</option><option value="1">plain MOPP, as a Morserino (direct only)</option></select></label>
     <label class="f"><span>Macro 1</span><input data-k="macro1"></label>
     <label class="f"><span>Macro 2</span><input data-k="macro2"></label>
     <label class="f"><span>Macro 3</span><input data-k="macro3"></label>
@@ -272,10 +276,22 @@ function termAdd(d){
   const t=document.createElement("span");t.className="t";t.textContent=utc(d.t||Date.now()).substr(0,5)+(d.snr===99?" >":" "+d.snr);
   const lab=document.createElement("span");lab.className="lab";lab.textContent=d.k===1?"TXT":d.k===4?"CoL":"CW";
   lab.title=d.k===1?"LoRa text":d.k===4?"CW over LoRa":"keyed CW";
-  div.appendChild(t);div.appendChild(lab);div.appendChild(document.createTextNode(d.text+(d.h&&d.snr!==99?"  (via "+d.h+")":"")));
+  div.appendChild(t);div.appendChild(lab);div.appendChild(document.createTextNode(d.text));
+  if(d.h&&d.snr!==99){const r=document.createElement("span");r.className="rp";r.textContent="↻"+(d.h>1?d.h:"");r.title="came through "+d.h+(d.h>1?" repeaters":" repeater")+" (tap for details)";div.appendChild(r);}
+  div.title="Tap for details";
+  div.onclick=()=>{const x=div.querySelector(".det");if(x){x.remove();return;}const e=document.createElement("span");e.className="det";e.textContent=termDetails(d);div.appendChild(e);};
   el.appendChild(div);while(el.children.length>200)el.removeChild(el.firstChild);
   if(atBottom)el.scrollTop=el.scrollHeight;
   if(!lcStart)lcStart=d.t||Date.now();
+}
+function termDetails(d){
+  const kind=d.k===1?"LoRa text":d.k===4?"CW over LoRa"+(d.w?" at "+d.w+" wpm":""):"keyed CW";
+  const when=new Date(d.t||Date.now()).toISOString().substr(11,8)+" UTC";
+  if(d.snr===99)return "Sent by this station · "+kind+" · "+when;
+  const m=/(?:^| )DE ([A-Z0-9/]{3,})/i.exec(d.text),from=m?m[1].toUpperCase():"?";
+  const hops=d.path?d.path.split(","):[];
+  const route=d.h?[from,...(hops.length?hops:["("+d.h+(d.h>1?" stations":" station")+")"]),"you"].join(" → ")+" ("+d.h+(d.h>1?" repeats":" repeat")+")":"direct from "+from;
+  return route+" · "+kind+" · SNR "+d.snr+" dB, RSSI "+d.rssi+" dBm"+(d.h?" (the copy heard here)":"")+" · "+when;
 }
 function termSys(txt){const div=document.createElement("div");div.className="sys";div.textContent=txt;$("term").appendChild(div);$("term").scrollTop=$("term").scrollHeight;}
 function setVia(v){via=v;$("viaChat").classList.toggle("on",v==="chat");$("viaLcw").classList.toggle("on",v==="lcw");$("viaCw").classList.toggle("on",v==="cw");$("lcMode").value=v;
@@ -398,6 +414,7 @@ function renderRx(){
     const me=S.call&&(" "+d.text+" ").includes(" "+S.call+" ");
     div.className=d.k===3?"rly":d.k===1||d.k===4?"chat":d.snr===99?"tx":d.text.startsWith("CQ ")?"cq":me?"me":"";
     div.innerHTML=`<span>${utc(d.t)}</span><span>${d.snr===99?"TX":d.snr}</span><span title="clock offset of the sender, s">${d.snr===99?"":(d.dt>=0?"+":"")+d.dt.toFixed(1)}</span><span></span>`;
+    if(d.h&&d.snr!==99)div.title="came through "+d.h+(d.h>1?" repeaters":" repeater")+(d.path?": "+d.path.split(",").join(" → "):"")+", SNR "+d.snr+" dB here";
     div.lastChild.textContent=(d.k===3?"↻ ":d.k===2?"CW: ":d.k===4?"♪ ":d.k===1?"✉ ":"")+d.text+(d.h&&d.snr!==99?"  ↻"+d.h:"");
     if(d.snr!==99&&d.k===0)div.onclick=async()=>{const r=await cmd("pick",{id:d.id});if(!r.ok)alert(r.err);poll();};
     el.appendChild(div);

@@ -38,7 +38,7 @@ bool gridOk(const std::string& s) {
     return true;
 }
 const char* const kKeys[] = {"call", "operator", "grid", "cqTag", "opMode", "maxRetries", "useRR73", "confirmQso", "cqParity",
-                             "slotSec", "watchdogMin", "ftMode", "meshSlotSec", "meshHops", "meshRelay", "cwWpm", "ftcwWpm", "cwIdMin", "freqHz", "sf", "bwKhz", "cr", "powerDbm", "apSsid", "apPass",
+                             "slotSec", "watchdogMin", "ftMode", "meshSlotSec", "meshHops", "meshRelay", "colPlain", "cwWpm", "ftcwWpm", "cwIdMin", "freqHz", "sf", "bwKhz", "cr", "powerDbm", "apSsid", "apPass",
                              "staSsid", "staPass", "adifMode", "adifMesh", "adifChat", "adifFtcw", "adifLcw", "logHost", "logPort",
                              "gpsRx", "gpsTx", "gpsBaud", "gpsPps", "gpsGrid",
                              "macro1", "macro2", "macro3", "macro4", "macro5", "macro6"};
@@ -79,6 +79,7 @@ bool Settings::set(const std::string& k, const std::string& v) {
     if (k == "meshSlotSec") { if (!toInt(v, 6, 60, n)) return false; meshSlotSec = (int)n; return true; }
     if (k == "meshHops") { if (!toInt(v, 1, 5, n)) return false; meshHops = (int)n; return true; }
     if (k == "meshRelay") { if (!toInt(v, 0, 2, n)) return false; meshRelay = (int)n; return true; }
+    if (k == "colPlain") { if (!toInt(v, 0, 1, n)) return false; colPlain = n; return true; }
     if (k == "cwWpm") { if (!toInt(v, 5, 40, n)) return false; cwWpm = (int)n; return true; }
     if (k == "cwIdMin") { if (!toInt(v, 0, 30, n)) return false; cwIdMin = (int)n; return true; }
     if (k == "adifMesh") { std::string u = upper(v); if (u.empty() || u.size() > 16) return false; adifMesh = u; return true; }
@@ -123,6 +124,7 @@ std::string Settings::get(const std::string& k) const {
     if (k == "meshSlotSec") return std::to_string(meshSlotSec);
     if (k == "meshHops") return std::to_string(meshHops);
     if (k == "meshRelay") return std::to_string(meshRelay);
+    if (k == "colPlain") return colPlain ? "1" : "0";
     if (k == "cwWpm") return std::to_string(cwWpm);
     if (k == "cwIdMin") return std::to_string(cwIdMin);
     if (k == "adifMesh") return adifMesh;

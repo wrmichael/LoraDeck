@@ -86,7 +86,9 @@ private:
     int windowMs() const;                                     // FT-MESH relay window
     int hopsFit() const;                                      // relay windows that fit in the slot
     int64_t quietFromMs() const;                              // where the slot is free for CW (after the packets)
-    bool relayOn() const;
+    bool relayOn() const;                                     // FT-MESH messages
+    bool termRelayOn() const;                                 // Terminal messages (every mode)
+    void termRelay(const uint8_t* data, int len, int left, int taken, float snr, uint16_t id, const std::string& text);
     int myParity() const { return seq.txEnabled || !seq.dxCall.empty() ? seq.txParity : cfg.cqParity; }
     int64_t curSlot_ = -1;
     std::vector<Decode> rxSlot_;                              // heard, for the sequencer at the end of its slot
@@ -120,7 +122,8 @@ private:
     void dropOwn();                                           // our own planned transmissions (not relays)
     uint16_t msgId(const uint8_t* d, int n, int64_t slot) const;
     void heardFt(const std::string& text, int hops, int64_t sentMs, int rssi, float snr);
-    void heardChat(const std::string& text, int hops, int64_t sentMs, int rssi, float snr, int kind = 1, int wpm = 0);
+    void heardChat(const std::string& text, int hops, int64_t sentMs, int rssi, float snr, int kind = 1, int wpm = 0,
+                   const std::string& path = std::string());
     bool meshDup(uint16_t id, int64_t slot, float snr);
     void meshRelay(const uint8_t* data, int len, int left, int taken, int64_t slot, float snr, uint16_t id);
     void addRecent(const Decode& d);

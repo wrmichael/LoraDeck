@@ -108,6 +108,7 @@ static void meshTests() {
                     for (auto& w : n[j].on) if (w.first < it->end && w.second > it->start) lost = true;   // was sending
                     for (const MAir& o : mair)                    // another signal it hears at the same time
                         if (&o != &*it && links[o.from][j] && o.start < it->end && o.end > it->start) lost = true;
+                    if (getenv("TRACE") && it->d[0] == TERM_MAGIC) printf("  SIM %d->%d chat %s\n", it->from, j, lost ? "LOST" : "delivered");
                     if (!lost) n[j].app.onPacket(it->d.data(), (int)it->d.size(), -100, -5.0f + 5 * j);
                 }
             }
@@ -130,6 +131,7 @@ static void meshTests() {
     CHECK(n[0].cw.size() == 1 && n[0].cw[0] == "DE KC9AAA");
     CHECK(n[1].cw.size() == 1 && n[1].cw[0] == "DE KC9RRR");      // relays transmit too: they identify
 
+    if (getenv("TRACE")) for (int i = 0; i < N; i++) n[i].app.trace = [i](const std::string& l) { printf("  M[%d %lld] %s\n", i, (long long)simMs, l.c_str()); };
     // chat through the relay, "<to> DE <me>" added; B learns who called
     std::string r = n[0].app.command("chat", {{"text", "GM es tnx"}, {"to", "kc9bbb"}});
     CHECK(r.find("GM es tnx KC9BBB DE KC9AAA") != std::string::npos);
@@ -218,7 +220,7 @@ static void ftcwTests() {
     CHECK(r.find("GM OM UR 599 KC9CWB DE KC9CWA") != std::string::npos);
     for (int i = 0; i < 2000 && n[1].app.stateJson(0, false).find("\"lastDe\":\"KC9CWA\"") == std::string::npos; i++) step();
     std::string js = n[1].app.stateJson(0, false);
-    CHECK(js.find("\"k\":4,\"h\":0,\"w\":20,\"text\":\"GM OM UR 599 KC9CWB DE KC9CWA\"") != std::string::npos);
+    CHECK(js.find("\"k\":4,\"h\":0,\"w\":20,\"path\":\"\",\"text\":\"GM OM UR 599 KC9CWB DE KC9CWA\"") != std::string::npos);
     // the same message twice is refused; waiting messages are listed and can be cancelled
     n[0].app.command("halt", {});
     r = n[0].app.command("lcw", {{"text", "TEST ONE"}});
@@ -235,6 +237,63 @@ static void ftcwTests() {
     CHECK(n[0].app.command("cancel", {{"k", "all"}}).find("Already sent") != std::string::npos);
     r = n[1].app.command("logchat", {{"call", "KC9CWA"}, {"mode", "lcw"}, {"rstS", "599"}});
     CHECK(r.find("true") != std::string::npos && n[1].logged.size() == 2 && n[1].logged.back().find("<MODE:7>LORA-CW") != std::string::npos);
+}
+
+// ---- Terminal messages repeated in FT-LoRa mode (not FT-MESH): A - R - B, with the path
+static void termRelayTests() {
+    const int N = 3;
+    static Node n[N];
+    bool links[N][N] = {{0, 1, 0}, {1, 0, 1}, {0, 1, 0}};
+    const char* calls[N] = {"KC9TAA", "KC9TRR", "KC9TBB"};
+    mair.clear();
+    for (int i = 0; i < N; i++) {
+        Node& x = n[i];
+        x.idx = i;
+        std::string dir = "/tmp/ld_r" + std::to_string(i);
+        mkdir(dir.c_str(), 0755);
+        unlink((dir + "/settings.txt").c_str());
+        x.app.begin(dir);
+        x.app.airtime = airOf;
+        x.app.radioSend = [&x](const uint8_t* d, int len) {
+            if (len > 0 && (d[0] == TERM_MAGIC || d[0] == COLR_MAGIC) && (d[1] & 15) > 0) x.relays++;
+            MAir a{x.idx, std::vector<uint8_t>(d, d + len), simMs, simMs + airOf(len), false};
+            mair.push_back(a);
+            x.on.push_back({a.start, a.end});
+            return true;
+        };
+        x.app.radioCw = [](const std::string&, int) { return false; };
+        if (getenv("TRACE")) x.app.trace = [i](const std::string& l) { printf("  [%d %lld] %s\n", i, (long long)simMs, l.c_str()); };
+        CHECK(x.app.command("set", {{"call", calls[i]}, {"watchdogMin", "0"}, {"ftMode", "0"}, {"cwIdMin", "0"},
+                                    {"meshRelay", i == 1 ? "2" : "1"}}).find("\"ok\":true") != std::string::npos);
+    }
+    auto step = [&]() {
+        for (auto it = mair.begin(); it != mair.end();) {
+            if (it->end > simMs) { ++it; continue; }
+            n[it->from].app.onTxDone();
+            for (int j = 0; j < N; j++) {
+                if (!links[it->from][j]) continue;
+                bool lost = false;
+                for (auto& w : n[j].on) if (w.first < it->end && w.second > it->start) lost = true;
+                for (const MAir& o : mair)
+                    if (&o != &*it && links[o.from][j] && o.start < it->end && o.end > it->start) lost = true;
+                if (!lost) n[j].app.onPacket(it->d.data(), (int)it->d.size(), -100, 2.0f);
+            }
+            it = mair.erase(it);
+        }
+        for (Node& x : n) x.app.tick();
+        simMs += 10;
+    };
+    CHECK(n[0].app.command("chat", {{"text", "hello via the relay"}, {"to", "KC9TBB"}}).find("true") != std::string::npos);
+    for (int i = 0; i < 3000 && n[2].app.stateJson(0, false).find("hello via the relay") == std::string::npos; i++) step();
+    std::string js = n[2].app.stateJson(0, false);
+    CHECK(js.find("\"h\":1,\"w\":0,\"path\":\"KC9TRR\",\"text\":\"hello via the relay KC9TBB DE KC9TAA\"") != std::string::npos);
+    CHECK(n[1].relays == 1);
+    if (n[1].relays != 1 || js.find("KC9TRR") == std::string::npos) printf("DEBUG relays=%d B: %s\n", n[1].relays, js.substr(js.find("\"rx\"")).c_str());
+    CHECK(n[0].app.command("lcw", {{"text", "CW VIA RELAY"}}).find("true") != std::string::npos);
+    for (int i = 0; i < 3000 && n[2].app.stateJson(0, false).find("CW VIA RELAY") == std::string::npos; i++) step();
+    js = n[2].app.stateJson(0, false);
+    CHECK(js.find("\"k\":4,\"h\":1,\"w\":20,\"path\":\"KC9TRR\",\"text\":\"CW VIA RELAY DE KC9TAA\"") != std::string::npos);
+    printf("Terminal through a relay in FT-LoRa: %s\n", js.find("CW VIA RELAY") != std::string::npos ? "ok" : "FAILED");
 }
 
 int main() {
@@ -389,6 +448,7 @@ int main() {
 
     meshTests();
     ftcwTests();
+    termRelayTests();
     printf("t_core: %d checks, %d failed\n", checks, fails);
     return fails ? 1 : 0;
 }

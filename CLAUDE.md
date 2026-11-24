@@ -60,6 +60,11 @@ Everything is operated from the web page; the OLED shows status only.
   and log. Second board done.
 - 2026-11-23 evening: 0.2.x running on both boards, "things seem to be working better". Wayne is recruiting more
   users for a wider test of this version. When reports come in: ask for the Console log download from each board.
+- 0.2.7: Terminal messages repeated in every mode (0xC3 text / 0xC4 CW over LoRa with a path of repeater
+  calls; Meshtastic-style: after hearing, weakest first, suppression; FT-MESH: in the quiet part after the
+  relay windows); "↻n" and tap-for-details (route, SNR/RSSI, time). Fixed: a Terminal message planned in a
+  slot first seen mid-way was dropped as late (now never scheduled in the past, and a late one is requeued).
+  colPlain setting = bare MOPP (Morserino). Older boards ignore 0xC3/0xC4: update all.
 - 0.2.6: Terminal tags TXT / CoL (CW over LoRa) / CW only in the All view; Clear button.
 - 0.2.5: Terminal "Show: This mode / All" (default This mode; data-v on lines, localStorage ld_termAll); sound
   for CW over LoRa only when shown, FT-CW sound only in FT-CW mode.

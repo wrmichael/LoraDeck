@@ -106,6 +106,15 @@ bool App::relayOn() const {
     return cfg.meshRelay == RELAY_ALWAYS || (cfg.meshRelay == RELAY_TX_ON && seq.txEnabled);
 }
 
+// Terminal messages are repeated in every mode: always, or while an operator is at the page (TX enabled, or
+// the page open within the watchdog time).
+bool App::termRelayOn() const {
+    if (cfg.call.empty() || cfg.meshRelay == RELAY_OFF) return false;
+    if (cfg.meshRelay == RELAY_ALWAYS) return true;
+    int64_t present = (int64_t)(cfg.watchdogMin > 0 ? cfg.watchdogMin : 6) * 60000;
+    return seq.txEnabled || clk::monoMs() - lastUiMono_ < present;
+}
+
 uint16_t App::msgId(const uint8_t* d, int n, int64_t slot) const {   // FNV-1a over the content and the slot
     uint32_t h = 2166136261u;
     for (int i = 0; i < n; i++) { h ^= d[i]; h *= 16777619u; }
@@ -150,6 +159,10 @@ void App::sendDue(int64_t t) {
         TxItem it = txq_.front();
         txq_.erase(txq_.begin());
         if (t - it.at > it.late) {                          // the clock jumped, or the radio was busy
+            // a Terminal message is not lost: it goes again in our next slot
+            if (it.kind == TX_CHAT) { chatOut_.push_front(it.text); tr("not sent yet, next slot: " + it.text); continue; }
+            if (it.kind == TX_LCW) { lcwOut_.push_front(it.text); tr("not sent yet, next slot: " + it.text); continue; }
+            if (it.kind == TX_CW) { cwOut_.push_front(it.text); tr("not sent yet, next slot: " + it.text); continue; }
             tr("TX skipped, too late: " + it.text);
             continue;
         }
@@ -249,6 +262,8 @@ void App::planSlot(int64_t slot) {
 // Terminal messages and CW in our own slot, from `cursor` on (after our FT message).
 void App::planTerminal(int64_t slot, int64_t cursor, bool cwId) {
     int64_t L = slotLen(), s0 = slot * L;
+    if (cursor < now() + 30) cursor = now() + 30;           // the slot may have started a while ago (start-up, mode change)
+    if (mesh() && cursor < s0 + quietFromMs()) cursor = s0 + quietFromMs();   // FT-MESH: after the relay windows
     if (!chatOut_.empty()) {                                // a Terminal message, after our FT message
         std::string t = chatOut_.front();
         chatOut_.pop_front();
@@ -257,7 +272,7 @@ void App::planTerminal(int64_t slot, int64_t cursor, bool cwId) {
         it.kind = TX_CHAT;
         it.text = t;
         uint16_t id = msgId((const uint8_t*)t.data(), (int)t.size(), slot);
-        it.pkt = {CHAT_MAGIC, (uint8_t)(mesh() ? hopsFit() << 4 : 0), (uint8_t)(id >> 8), (uint8_t)id};
+        it.pkt = {TERM_MAGIC, (uint8_t)(cfg.meshHops << 4), (uint8_t)(id >> 8), (uint8_t)id, 0};   // no path yet
         it.pkt.insert(it.pkt.end(), t.begin(), t.end());
         it.mid = id;
         seen_[id] = slot;
@@ -270,12 +285,21 @@ void App::planTerminal(int64_t slot, int64_t cursor, bool cwId) {
         it.kind = TX_LCW;
         it.text = lcwOut_.front();
         lcwOut_.pop_front();
-        it.pkt = moppEncode(it.text, cfg.cwWpm, moppSerial_++);
+        std::vector<uint8_t> mp = moppEncode(it.text, cfg.cwWpm, moppSerial_++);
+        if (cfg.colPlain) {
+            it.pkt = mp;                                    // plain MOPP, as a Morserino: never repeated
+        } else {                                            // in LoRaDeck's repeatable wrapper
+            uint16_t id = msgId(mp.data() + 1, (int)mp.size() - 1, slot);
+            it.pkt = {COLR_MAGIC, (uint8_t)(cfg.meshHops << 4), (uint8_t)(id >> 8), (uint8_t)id, 0};
+            it.pkt.insert(it.pkt.end(), mp.begin(), mp.end());
+            it.mid = id;
+            seen_[id] = slot;
+        }
         queue(it);
         cursor += air((int)it.pkt.size()) + 80;
     }
     // CW (keyed carrier) in the quiet part of our slot: after the packets (and the relay windows in FT-MESH)
-    int64_t quiet = mesh() ? s0 + quietFromMs() : cursor + 100;
+    int64_t quiet = cursor + 100;
     if (quiet < cursor) quiet = cursor;
     int64_t mono = clk::monoMs();
     TxItem it;
@@ -416,8 +440,34 @@ void App::onPacket(const uint8_t* data, int len, int rssi, float snr) {
         heardFt(text, 0, now() - air(len) - TX_OFFSET_MS, rssi, snr);
         return;
     }
-    if ((m == FTM_MAGIC && len == FTM_PACKET) || (m == CHAT_MAGIC && len >= 5 && len <= 4 + CHAT_MAX)) {
-        if (m == FTM_MAGIC && !mesh()) { tr("heard an FT-MESH packet: ignored, this station is set to FT-LoRa"); return; }
+    // Terminal messages (text, CW over LoRa), repeatable in every mode; 0xC1 is the older format without a path
+    if ((m == TERM_MAGIC || m == COLR_MAGIC || m == CHAT_MAGIC) && len >= 6) {
+        int left = data[1] >> 4, taken = data[1] & 15;
+        uint16_t id = (uint16_t)(data[2] << 8 | data[3]);
+        int plen = m == CHAT_MAGIC ? 0 : data[4], body = m == CHAT_MAGIC ? 4 : 5 + plen;
+        if (plen > PATH_MAX || body >= len) { tr("heard a damaged Terminal packet"); return; }
+        std::string path((const char*)data + 5, m == CHAT_MAGIC ? 0 : plen);
+        int64_t L = slotLen(), slot = now() / L;
+        if (meshDup(id, slot, snr)) return;
+        seen_[id] = slot;
+        int64_t start = now() - air(len) - TX_OFFSET_MS;
+        std::string text;
+        int wpm = 0;
+        if (m == COLR_MAGIC) {
+            int serial = 0;
+            if (!moppDecode(data + body, len - body, text, wpm, serial)) { tr("heard a damaged CW over LoRa packet"); return; }
+            heardChat(text, taken, start, rssi, snr, 4, wpm, path);
+        } else {
+            for (int i = body; i < len; i++) text += (data[i] >= 0x20 && data[i] < 0x7F) ? (char)data[i] : '?';
+            heardChat(text, taken, start, rssi, snr, 1, 0, path);
+        }
+        std::string from, to;
+        bool toMe = deCalls(text, from, to) && to == cfg.call;
+        if (m != CHAT_MAGIC && left > 0 && !toMe && termRelayOn()) termRelay(data, len, left, taken, snr, id, text);
+        return;
+    }
+    if (m == FTM_MAGIC && len == FTM_PACKET) {
+        if (!mesh()) { tr("heard an FT-MESH packet: ignored, this station is set to FT-LoRa"); return; }
         int left = data[1] >> 4, taken = data[1] & 15;
         uint16_t id = (uint16_t)(data[2] << 8 | data[3]);
         // when its originator's slot started: arrival - time on air - TX offset - the relay windows before
@@ -436,11 +486,6 @@ void App::onPacket(const uint8_t* data, int len, int rssi, float snr) {
             ParsedMsg p;
             toMe = parseMsg(text, p) && p.to == cfg.call;
             heardFt(text, taken, start, rssi, snr);
-        } else {
-            for (int i = 4; i < len; i++) text += (data[i] >= 0x20 && data[i] < 0x7F) ? (char)data[i] : '?';
-            std::string from, to;
-            toMe = deCalls(text, from, to) && to == cfg.call;
-            heardChat(text, taken, start, rssi, snr);
         }
         if (left > 0 && relayOn() && !toMe) meshRelay(data, len, left, taken, slot, snr, id);
         return;
@@ -491,6 +536,37 @@ void App::meshRelay(const uint8_t* data, int len, int left, int taken, int64_t s
     queue(it);
 }
 
+// Repeat a Terminal message: shortly after hearing it, the weakest-heard copy first (that station is likely
+// farthest from the sender), with our call added to its path; dropped if another station repeats it first.
+void App::termRelay(const uint8_t* data, int len, int left, int taken, float snr, uint16_t id, const std::string& text) {
+    int plen = data[4];
+    std::string path((const char*)data + 5, plen);
+    std::string add = (path.empty() ? "" : ",") + cfg.call;
+    TxItem it;
+    it.pkt.assign(data, data + 5);
+    it.pkt[1] = (uint8_t)((left - 1) << 4 | (taken + 1));
+    if (plen + (int)add.size() <= PATH_MAX) path += add;     // a long path is left as it is
+    it.pkt[4] = (uint8_t)path.size();
+    it.pkt.insert(it.pkt.end(), path.begin(), path.end());
+    it.pkt.insert(it.pkt.end(), data + 5 + plen, data + len);
+    double f = (snr + 15.0) / 25.0;
+    f = f < 0 ? 0 : f > 1 ? 1 : f;
+    int W = air((int)it.pkt.size()) + 300;
+    uint32_t h = id;                                         // two stations that heard it alike do not collide
+    for (char c : cfg.call) h = h * 31 + (uint8_t)c;
+    it.at = now() + 60 + (int64_t)(f * W) + (int64_t)(h % 120);
+    if (mesh()) {                                            // FT-MESH: in the quiet part of a slot, after its relay windows
+        int64_t L = slotLen(), s0 = (now() / L) * L, q = s0 + quietFromMs();
+        if (it.at < q) it.at = q + (int64_t)(f * W) + (int64_t)(h % 120);
+        if (it.at + air((int)it.pkt.size()) > s0 + L - 200) it.at = s0 + L + quietFromMs() + (int64_t)(f * W) + (int64_t)(h % 120);
+    }
+    it.late = 400;
+    it.kind = TX_RELAY;
+    it.mid = id;
+    it.text = text;
+    queue(it);
+}
+
 void App::heardFt(const std::string& text, int hops, int64_t startMs, int rssi, float snr) {
     int64_t L = slotLen(), slot = (startMs + L / 2) / L;
     Decode d;
@@ -516,7 +592,8 @@ void App::heardFt(const std::string& text, int hops, int64_t startMs, int rssi, 
     addRecent(d);
 }
 
-void App::heardChat(const std::string& text, int hops, int64_t startMs, int rssi, float snr, int kind, int wpm) {
+void App::heardChat(const std::string& text, int hops, int64_t startMs, int rssi, float snr, int kind, int wpm,
+                    const std::string& path) {
     int64_t L = slotLen(), slot = (startMs + L / 2) / L;
     Decode d;
     d.id = nextId_++;
@@ -527,10 +604,11 @@ void App::heardChat(const std::string& text, int hops, int64_t startMs, int rssi
     d.kind = kind;
     d.wpm = wpm;
     d.hops = hops;
+    d.path = path;
     d.text = text;
     std::string from, to;
     if (deCalls(text, from, to) && from != cfg.call) lastDe_ = from;
-    tr(std::string(kind == 4 ? "heard CW over LoRa (" + std::to_string(wpm) + " wpm): " : "heard chat: ") + text + " (SNR " + std::to_string(d.snr) + (hops ? ", via " + std::to_string(hops) : std::string()) + ")");
+    tr(std::string(kind == 4 ? "heard CW over LoRa (" + std::to_string(wpm) + " wpm): " : "heard chat: ") + text + " (SNR " + std::to_string(d.snr) + (hops ? ", via " + (path.empty() ? std::to_string(hops) + " relays" : path) : std::string()) + ")");
     addRecent(d);
 }
 
@@ -854,7 +932,7 @@ std::string App::stateJson(uint32_t sinceRx, bool withCfg) {
     o += ",\"utc\":" + jnum(now) + ",\"clock\":" + jbool(clk::utcValid()) + ",\"clkSrc\":" + jstr(clk::sourceName(clk::source())) +
          ",\"clkAge\":" + jnum(clk::sinceSetMs() / 1000) + ",\"opCall\":" + jstr(cfg.operatorCall);
     o += ",\"mode\":" + jstr(modeName()) + ",\"hops\":" + jnum(mesh() ? hopsFit() : 0) +
-         ",\"relay\":" + jbool(relayOn()) + ",\"wpm\":" + jnum(cfg.cwWpm);
+         ",\"relay\":" + jbool(relayOn()) + ",\"termRelay\":" + jbool(termRelayOn()) + ",\"wpm\":" + jnum(cfg.cwWpm);
     o += ",\"slotSec\":" + jnum(L / 1000) + ",\"phase\":" + jnum(now % L) + ",\"parity\":" + jnum((now / L) & 1);
     o += ",\"radio\":{\"freq\":" + jnum(cfg.freqHz) + ",\"sf\":" + jnum(cfg.sf) + ",\"bw\":" + jnum(cfg.bwKhz) +
          ",\"cr\":" + jnum(cfg.cr) + ",\"pwr\":" + jnum(cfg.powerDbm) + ",\"band\":" + jstr(adifBand(cfg.freqHz)) + "}";
@@ -876,7 +954,7 @@ std::string App::stateJson(uint32_t sinceRx, bool withCfg) {
         char dt[12];
         snprintf(dt, sizeof dt, "%.1f", d.dt);
         o += "{\"id\":" + jnum(d.id) + ",\"t\":" + jnum(d.slotMs) + ",\"snr\":" + jnum(d.snr) + ",\"rssi\":" +
-             jnum(d.rssi) + ",\"p\":" + jnum(d.parity) + ",\"dt\":" + dt + ",\"k\":" + jnum(d.kind) + ",\"h\":" + jnum(d.hops) + ",\"w\":" + jnum(d.wpm) +
+             jnum(d.rssi) + ",\"p\":" + jnum(d.parity) + ",\"dt\":" + dt + ",\"k\":" + jnum(d.kind) + ",\"h\":" + jnum(d.hops) + ",\"w\":" + jnum(d.wpm) + ",\"path\":" + jstr(d.path) +
              ",\"text\":" + jstr(d.text) + "}";
     }
     o += "],\"log\":" + jnum(logCount_) + ",\"status\":" + jstr(status_);

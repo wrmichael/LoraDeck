@@ -48,6 +48,10 @@ The **Terminal** tab: type and send.
   is the same.
 - **CW (keyed)**: real CW, the radio's carrier keyed on and off on the channel frequency, at the CW speed in
   Settings; copy it with any 33 cm receiver. LoRaDecks cannot decode CW.
+- **Repeaters:** stations with "Repeat for other stations" on (Settings → Mode) repeat Terminal messages in
+  every mode, not only FT-MESH, so a chat reaches stations out of direct range. A repeated message shows
+  **↻** (↻2 after two repeaters); tap any message for its details: who sent it, the route
+  (KC9TAA → W9AIM → you), the signal of the copy heard here, the time and, for CW, the speed.
 - Every message ends with **"&lt;to&gt; DE &lt;your call&gt;"** (or "DE &lt;your call&gt;" when no To call is set),
   unless it already contains your call. The To call fills in from the last "DE" call heard.
 - **Show: This mode / All**: by default the Terminal shows (and plays) only the messages of the kind you send

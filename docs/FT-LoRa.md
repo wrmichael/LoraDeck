@@ -44,10 +44,18 @@ Same messages and sequence, but every station also repeats what it hears.
 - Repeating is a setting: off, while transmit is enabled, or always.
 - Receivers take the first copy of each id; the hop count shows as "via n".
 
-## Terminal text (packet 0xC1)
-`0xC1`, hop byte, 16-bit id (as FT-MESH), then up to 120 ASCII characters. Sent in the sender's own slot after its
-FT message. In FT-LoRa the hop byte is 0 (not repeated); in FT-MESH it is repeated like the FT messages. LoRaDeck
-ends each message with "&lt;to&gt; DE &lt;sender&gt;" unless the text already holds the sender's call.
+## Terminal messages (packets 0xC3 text, 0xC4 CW over LoRa)
+`0xC3` / `0xC4`, hop byte (hops left << 4 | hops taken), 16-bit id, path length *n* (0..40), *n* bytes of path
+(the calls of the stations that repeated it, comma-separated, in order), then the text (up to 120 ASCII
+characters) or a MOPP packet. Sent in the sender's own slot after its FT message (in FT-MESH after the relay
+windows). LoRaDeck ends each message with "&lt;to&gt; DE &lt;sender&gt;" unless the text already holds the
+sender's call.
+- **Repeated in every mode** (FT-LoRa, FT-MESH, FT-CW), by stations whose "Repeat for other stations" is on:
+  once per id, shortly after hearing it (weakest-heard copy first, plus a small per-station offset), with the
+  repeater's call added to the path; dropped if another copy is heard first; not repeated by the station it is
+  addressed to. In FT-MESH the repeats go in the quiet part of a slot, after the FT relay windows.
+- `0xC1` is the older text format (hop byte, id, text, no path); still received, not repeated.
+- With "CW over LoRa format: plain MOPP" a station sends bare MOPP (as a Morserino), which is never repeated.
 
 ## FT-CW and CW over LoRa (MOPP packets)
 Morse in a packet, in the MOPP format (github.com/Morse-Code-over-IP/protocol-mopp): a 14-bit header (version
