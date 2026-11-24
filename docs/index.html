@@ -43,8 +43,8 @@ esp-web-install-button:not(:defined) [slot=unsupported],esp-web-install-button:n
   <div class="card">
     <div class="ver">Heltec WiFi LoRa 32 V3 (863-928 MHz)</div>
     <div class="chan" role="radiogroup" aria-label="Firmware channel">
-      <label><input type="radio" name="ch" value="stable" checked> <b>Stable</b> <span id="vStable">…</span> <small>tested, recommended</small></label>
-      <label><input type="radio" name="ch" value="beta"> <b>Beta</b> <span id="vBeta">…</span> <small>newest features, may have bugs</small></label>
+      <label><input type="radio" name="ch" value="stable"> <b>Stable</b> <span id="vStable">…</span> <small>tested, recommended</small></label>
+      <label><input type="radio" name="ch" value="beta" checked> <b>Beta</b> <span id="vBeta">…</span> <small>newest features, may have bugs</small></label>
     </div>
     <ol>
       <li>Connect the board's <b>USB-C port</b> to this computer with a data cable.</li>
@@ -53,12 +53,12 @@ esp-web-install-button:not(:defined) [slot=unsupported],esp-web-install-button:n
       <li>When it restarts, join the Wi-Fi network <b>LoRaDeck-XXXXXX</b> shown on the OLED (password <code>loradeck1</code>) and open <b>http://192.168.4.1</b>.</li>
     </ol>
     <div class="row">
-      <esp-web-install-button id="inst" manifest="stable/manifest.json">
+      <esp-web-install-button id="inst" manifest="manifest.json">
         <button slot="activate" class="btn">Install LoRaDeck</button>
         <div slot="unsupported" class="note">This browser cannot flash devices. Use <b>Chrome</b> or <b>Edge</b> on a Windows, Mac, Linux or ChromeOS computer.</div>
         <div slot="not-allowed" class="note">Flashing needs a secure (https) page. Open this page from its GitHub Pages address.</div>
       </esp-web-install-button>
-      <a class="btn alt" id="dl" href="stable/loradeck.bin" download>Download .bin</a>
+      <a class="btn alt" id="dl" href="firmware/loradeck.bin" download>Download .bin</a>
     </div>
     <div class="warn">Download your log from the LoRaDeck web page (Log tab) before installing, just in case. Ticking "Erase device" deletes the log and settings.</div>
   </div>
@@ -81,9 +81,17 @@ esp-web-install-button:not(:defined) [slot=unsupported],esp-web-install-button:n
 const CH = {stable: {m: "stable/manifest.json", bin: "stable/loradeck.bin", el: "vStable"},
             beta:   {m: "manifest.json",        bin: "firmware/loradeck.bin", el: "vBeta"}};
 const ver = {};
-for (const k in CH) fetch(CH[k].m, {cache: "no-store"}).then(r => r.json()).then(m => {
-  ver[k] = m.version; document.getElementById(CH[k].el).textContent = m.version; pick();
-}).catch(() => { document.getElementById(CH[k].el).textContent = "(not released yet)"; });
+// Stable is the default once there is one; until then (or if it cannot be read) the page stays on Beta.
+for (const k in CH) fetch(CH[k].m, {cache: "no-store"}).then(r => { if (!r.ok) throw 0; return r.json(); }).then(m => {
+  ver[k] = m.version; document.getElementById(CH[k].el).textContent = m.version;
+  if (k === "stable") document.querySelector("input[value=stable]").checked = true;
+  pick();
+}).catch(() => {
+  document.getElementById(CH[k].el).textContent = "(not released yet)";
+  const r = document.querySelector("input[value=" + k + "]");
+  r.disabled = true;
+  if (r.checked) { r.checked = false; const o = document.querySelector("input[name=ch]:not(:disabled)"); if (o) o.checked = true; pick(); }
+});
 function pick() {
   const k = document.querySelector("input[name=ch]:checked").value;
   document.getElementById("inst").setAttribute("manifest", CH[k].m);
