@@ -28,7 +28,9 @@ struct Station {
         idx = i;
         mkdir(dir, 0755);
         unlink((std::string(dir) + "/settings.txt").c_str());
-        unlink((std::string(dir) + "/" + call + "_log.adi").c_str());
+        std::string file = call;
+        for (char& c : file) if (c == '/') c = '_';
+        unlink((std::string(dir) + "/" + file + "_log.adi").c_str());
         app.begin(dir);
         app.radioSend = [this](const uint8_t* d, int n) {
             CHECK(n == FTL_PACKET);
@@ -66,7 +68,7 @@ int main() {
     clk::simulate(simUtc, simMono);
     static Station A, B;
     A.init(0, "/tmp/ld_a", "AC9HP", "EM69", OP_AUTO_CQ);
-    B.init(1, "/tmp/ld_b", "W1AW", "FN31", OP_AUTO_HUNT);
+    B.init(1, "/tmp/ld_b", "AC9HP/P", "EM69", OP_AUTO_HUNT);   // same operator, portable second station
     CHECK(A.app.command("txen", {{"on", "1"}}).find("true") != std::string::npos);
     CHECK(B.app.command("txen", {{"on", "1"}}).find("true") != std::string::npos);
     Station* st[2] = {&A, &B};
@@ -83,7 +85,7 @@ int main() {
     }
     CHECK(A.logged.size() == 1 && B.logged.size() == 1);
     if (!A.logged.empty()) {
-        CHECK(A.logged[0].find("<CALL:4>W1AW") != std::string::npos);
+        CHECK(A.logged[0].find("<CALL:7>AC9HP/P") != std::string::npos);
         CHECK(A.logged[0].find("<MODE:7>FT-LORA") != std::string::npos);
         CHECK(A.logged[0].find("<BAND:4>33cm") != std::string::npos);
         CHECK(A.logged[0].find("<RST_RCVD:") != std::string::npos);
@@ -101,6 +103,16 @@ int main() {
         again.begin("/tmp/ld_a");
         CHECK(again.logCount() == 1);
         CHECK(again.cfg.call == "AC9HP");
+        App b2;                                             // "AC9HP/P" logs to AC9HP_P_log.adi
+        b2.begin("/tmp/ld_b");
+        CHECK(b2.logCount() == 1);
+        CHECK(b2.logPath() == "/tmp/ld_b/AC9HP_P_log.adi");
+    }
+    {                                                       // a second station with the same call is reported
+        uint8_t pk[FTL_PACKET];
+        CHECK(ftlPack("CQ AC9HP EM69", pk));
+        A.app.onPacket(pk, FTL_PACKET, -90, 5.0f);
+        CHECK(A.app.status().find("same") != std::string::npos || A.app.status().find("your callsign") != std::string::npos);
     }
     std::string js = A.app.stateJson(0, true);
     CHECK(js.find("\"call\":\"AC9HP\"") != std::string::npos && js.find("\"cfg\":{") != std::string::npos);

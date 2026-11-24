@@ -45,6 +45,11 @@ static esp_err_t sendJson(httpd_req_t* req, const std::string& js) {
     return httpd_resp_send(req, js.data(), js.size());
 }
 
+static std::string fileCall() {                              // callsign for a file name (AC9HP/P -> AC9HP_P)
+    std::string c = s_app->cfg.call.empty() ? std::string("LoRaDeck") : s_app->cfg.call;
+    for (char& ch : c) if (ch == '/') ch = '_';
+    return c;
+}
 static esp_err_t hIndex(httpd_req_t* req) {
     httpd_resp_set_type(req, "text/html; charset=utf-8");
     httpd_resp_set_hdr(req, "Cache-Control", "no-cache");
@@ -87,7 +92,7 @@ static esp_err_t hCmd(httpd_req_t* req) {
 static esp_err_t hLog(httpd_req_t* req) {
     std::string t = s_app->logText();
     httpd_resp_set_type(req, "text/plain; charset=utf-8");
-    std::string cd = "attachment; filename=\"" + (s_app->cfg.call.empty() ? std::string("LoRaDeck") : s_app->cfg.call) + "_log.adi\"";
+    std::string cd = "attachment; filename=\"" + fileCall() + "_log.adi\"";
     std::map<std::string, std::string> a;
     parseForm(query(req), a);
     if (a["dl"] == "1") httpd_resp_set_hdr(req, "Content-Disposition", cd.c_str());
@@ -99,7 +104,7 @@ static esp_err_t hConsole(httpd_req_t* req) {                // console log: ?ta
     std::string t = conlog_read(a["dl"] == "1" ? 0 : (size_t)strtoul(a["tail"].empty() ? "6000" : a["tail"].c_str(), nullptr, 10));
     httpd_resp_set_type(req, "text/plain; charset=utf-8");
     httpd_resp_set_hdr(req, "Cache-Control", "no-store");
-    std::string cd = "attachment; filename=\"" + (s_app->cfg.call.empty() ? std::string("LoRaDeck") : s_app->cfg.call) + "_console.txt\"";
+    std::string cd = "attachment; filename=\"" + fileCall() + "_console.txt\"";
     if (a["dl"] == "1") httpd_resp_set_hdr(req, "Content-Disposition", cd.c_str());
     return httpd_resp_send(req, t.data(), t.size());
 }

@@ -41,6 +41,9 @@ Everything is operated from the web page; the OLED shows status only.
   suffix. Default frequency changed to 917.000 MHz after that (the first board still has 915.000 saved).
 - 0.1.2: console log + radio counters (Console tab, OLED "T R E" line), added while two boards (Auto CQ / Auto
   hunt) did not hear each other; first suspect: board 1 still on 915.000 MHz.
+- Two-board test 2026-11-23: no contact because board 1 was on 915.000 (fixed), then because both had AC9HP (a
+  station ignores messages from its own call). 0.1.3: second board as AC9HP/P works (host test does exactly
+  that); "/" in the call becomes "_" in the log file name; warning when another station sends as our call.
 - Next: second board, first real two-board QSO; then firmware update from a flasher web page, settings import/
   copy, CW ID beacon, LoRa APRS, mDNS, Heltec V4 support (FEM/PA enable pins, 16 MB flash). Full list in
   docs/ROADMAP.md.

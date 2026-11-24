@@ -47,7 +47,9 @@ std::string field(const char* name, const std::string& v) {
 }
 
 std::string App::logPath() const {
-    return dir_ + "/" + (cfg.call.empty() ? std::string("NOCALL") : cfg.call) + "_log.adi";
+    std::string name = cfg.call.empty() ? std::string("NOCALL") : cfg.call;
+    for (char& c : name) if (c == '/') c = '_';                // AC9HP/P -> AC9HP_P_log.adi
+    return dir_ + "/" + name + "_log.adi";
 }
 
 void App::begin(const std::string& dataDir) {
@@ -168,6 +170,14 @@ void App::onPacket(const uint8_t* data, int len, int rssi, float snr) {
         char b[48];
         snprintf(b, sizeof b, " (SNR %d, %+.2f s, %s slot)", d.snr, d.dt, d.parity ? "odd" : "even");
         tr("heard: " + text + b);
+    }
+    {
+        ParsedMsg p;
+        if (!cfg.call.empty() && parseMsg(text, p) && p.from == cfg.call) {
+            status("Heard another station using your callsign " + cfg.call + ": give each LoRaDeck its own call (e.g. " +
+                   cfg.call + "/P)");
+            tr("another station is sending as " + cfg.call + "; its messages are ignored");
+        }
     }
     rxSlot_.push_back(d);
     recent_.push_back(d);
