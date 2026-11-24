@@ -6,6 +6,10 @@ rem Put the new version number in version.txt first. Then it asks whether to pub
 cd /d "%~dp0.."
 set ch=%1
 if "%ch%"=="" set ch=beta
+rem Build the newest code from GitHub (keep local helper files under other names, see CLAUDE.md).
+git checkout -- .
+git pull
+if errorlevel 1 (echo git pull failed: nothing built. & timeout /t 15 & goto :eof)
 powershell -NoProfile -ExecutionPolicy Bypass -Command ". 'C:\Espressif\tools\Microsoft.v6.1.PowerShell_profile.ps1'; & '%~dp0release.ps1' '%ch%' 2>&1 | Tee-Object -FilePath tools\release.log"
 if errorlevel 1 goto :eof
 set /p ver=<version.txt
