@@ -100,6 +100,24 @@ A floating light shows the transmit state: green = TX on, yellow = past half of 
 timed out; it pulses while transmitting and all of it flashes "No link" when the page loses the board. While the
 page is open and in view you count as present for the watchdog.
 
+## Where the log is kept
+
+The QSO log (`/data/<CALL>_log.adi`), the settings and the console log are in the board's own flash memory (a
+4 MB storage partition), not in RAM: they survive **power-off, restarts, crashes and firmware updates** (over
+Wi-Fi, or the web flasher with "Erase device" unticked). They are deleted only by a **factory reset with
+"Everything"** or the web flasher with **"Erase device" ticked**. A contact is written to the log the moment it
+is logged; only the last ~3 s of console log lines can be lost in a power cut. The Heltec V3 has no SD card
+slot; download the log now and then as a backup.
+
+## Factory reset
+
+Settings → **Factory reset…** (at the bottom, closed by default): choose **Settings only** (the logs are kept)
+or **Everything** (settings and logs; the storage is formatted, which also repairs a damaged one), type
+`RESET`, press the red button and confirm once more; the board asks for a one-time code that expires in a
+minute, so nothing else can trigger it. It then restarts with the default hotspot (LoRaDeck-XXXXXX, password
+loradeck1). **Without the page:** hold the **PRG** button for 10 seconds while the board runs (the OLED counts
+down; let go to cancel): a settings reset, the log is kept.
+
 ## Console log
 
 The **Console** tab shows the radio settings in use, packets sent, received and received with errors, and the

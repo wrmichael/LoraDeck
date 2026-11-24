@@ -25,6 +25,9 @@
   dot length, as RigDeck's FT-CW decoder). Would let LoRaDecks read real CW (the CW ID, hand-sent CW from other
   33 cm stations, FT-CW as a keyed carrier). Needs strong signals (far less sensitive than LoRa) and the radio
   cannot listen for LoRa at the same time. To be tried on the board first.
+- **SD card for the log** (optional): an SPI microSD module on free pins of the V3 (none fitted on Wayne's
+  boards), and the built-in slot of the Cardputer-Adv / boards that have one: the ADIF log (and the console log)
+  on the card when one is present, in flash otherwise, with a copy of the flash log to the card.
 - Settings import / copy between boards.
 - LoRa APRS.
 - mDNS (loradeck.local).

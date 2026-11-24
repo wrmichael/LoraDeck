@@ -60,6 +60,11 @@ Everything is operated from the web page; the OLED shows status only.
   and log. Second board done.
 - 2026-11-23 evening: 0.2.x running on both boards, "things seem to be working better". Wayne is recruiting more
   users for a wider test of this version. When reports come in: ask for the Console log download from each board.
+- 0.2.9: factory reset (Settings card, closed by default: Settings only / Everything; type RESET + confirm +
+  one-time code "resettoken" valid 60 s, one try; App::factoryReset hook -> main doFactoryReset: settings =
+  remove files, everything = unmount + erase the storage partition (formatted at the next mount); NVS erased;
+  restart). PRG (GPIO0) held 10 s while running = settings reset with an OLED countdown. Log tab / README say
+  where the log lives (flash: survives power-off and updates). Roadmap: SD card for the log (V3 has no slot).
 - 0.2.8 (2026-11-24): one node said "Could not save the settings" when changing the call. Cause not known yet
   (suspect: storage full, e.g. the console log not trimmed). Now: Settings::lastError (errno) in the message,
   fallback write in place, Console tab shows storage free (state "fs"), conlog drops old lines below 256 KB free
