@@ -8,6 +8,7 @@
 #include <cctype>
 #include <iterator>
 #include "morse.h"
+#include "mopp.h"
 
 namespace {
 std::string jstr(const std::string& s) {
@@ -180,6 +181,7 @@ void App::sendDue(int64_t t) {
         case TX_FT: tr(std::string("TX ") + par + " slot: " + it.text); break;
         case TX_RELAY: tr("relay (hop " + std::to_string(it.pkt[1] & 15) + "): " + it.text); break;
         case TX_CHAT: tr(std::string("TX chat, ") + par + " slot: " + it.text); break;
+        case TX_LCW: tr("TX CW over LoRa at " + std::to_string(cfg.cwWpm) + " wpm: " + it.text); break;
         default: tr("TX CW at " + std::to_string(wpm) + " wpm (" + std::to_string(morseMs(it.text, wpm)) + " ms): " + it.text);
         }
         return;
@@ -220,7 +222,9 @@ void App::planSlot(int64_t slot) {
             it.at = cursor;
             it.kind = TX_FT;
             it.text = text;
-            if (mesh()) {
+            if (ftcw()) {                                    // the message in Morse, with RigDeck's check group
+                it.pkt = moppEncode(cwFrame(text), cfg.ftcwWpm, moppSerial_++);
+            } else if (mesh()) {
                 uint16_t id = msgId(b + 1, FTL_PACKET - 1, slot);
                 it.pkt.assign(FTM_PACKET, 0);
                 it.pkt[0] = FTM_MAGIC;
@@ -254,6 +258,16 @@ void App::planSlot(int64_t slot) {
         queue(it);
         cursor += air((int)it.pkt.size()) + 80;
     }
+    if (!lcwOut_.empty()) {                                 // CW over LoRa (MOPP), as a Morserino sends it
+        TxItem it;
+        it.at = cursor;
+        it.kind = TX_LCW;
+        it.text = lcwOut_.front();
+        lcwOut_.pop_front();
+        it.pkt = moppEncode(it.text, cfg.cwWpm, moppSerial_++);
+        queue(it);
+        cursor += air((int)it.pkt.size()) + 80;
+    }
     // CW (keyed carrier) in the quiet part of our slot: after the packets (and the relay windows in FT-MESH)
     int64_t quiet = mesh() ? s0 + quietFromMs() : cursor + 100;
     if (quiet < cursor) quiet = cursor;
@@ -284,7 +298,8 @@ void App::onTxDone() {
     d.slotMs = (cur_.at / slotLen()) * slotLen();
     d.parity = (int)((cur_.at / slotLen()) & 1);
     d.snr = 99;                                              // marks "sent by us"
-    d.kind = cur_.kind == TX_FT ? 0 : cur_.kind == TX_CHAT ? 1 : cur_.kind == TX_RELAY ? 3 : 2;
+    d.kind = cur_.kind == TX_FT ? 0 : cur_.kind == TX_CHAT ? 1 : cur_.kind == TX_RELAY ? 3 : cur_.kind == TX_LCW ? 4 : 2;
+    d.wpm = cur_.kind == TX_LCW ? cfg.cwWpm : cur_.kind == TX_FT && ftcw() ? cfg.ftcwWpm : 0;
     d.hops = cur_.kind == TX_RELAY && !cur_.pkt.empty() ? (cur_.pkt[1] & 15) : 0;
     d.text = cur_.text;
     addRecent(d);
@@ -334,6 +349,22 @@ void App::onPacket(const uint8_t* data, int len, int rssi, float snr) {
     std::lock_guard<std::mutex> lk(mtx_);
     if (len < 1) return;
     uint8_t m = data[0];
+    if (looksMopp(data, len)) {                             // Morse in a packet: FT-CW, or CW over LoRa
+        std::string text, msg;
+        int wpm = 0, serial = 0;
+        if (!moppDecode(data, len, text, wpm, serial)) { tr("heard a damaged CW (MOPP) packet"); return; }
+        int64_t start = now() - air(len) - TX_OFFSET_MS;
+        ParsedMsg p;
+        if (cwUnframe(text, msg) && parseMsg(msg, p)) {
+            if (!ftcw()) { tr("heard an FT-CW message (" + msg + "): this station is not set to FT-CW"); heardChat(text, 0, start, rssi, snr, 4, wpm); return; }
+            heardFt(msg, 0, start, rssi, snr);
+            if (!recent_.empty()) recent_.back().wpm = wpm;
+            return;
+        }
+        heardChat(text, 0, start, rssi, snr, 4, wpm);
+        return;
+    }
+    if (ftcw() && (m == FTL_MAGIC || m == FTM_MAGIC)) { tr("heard an FT-LoRa/FT-MESH packet: ignored, this station is set to FT-CW"); return; }
     if (m == FTL_MAGIC) {
         if (mesh()) { tr("heard an FT-LoRa packet: ignored, this station is set to FT-MESH"); return; }
         std::string text;
@@ -441,7 +472,7 @@ void App::heardFt(const std::string& text, int hops, int64_t startMs, int rssi, 
     addRecent(d);
 }
 
-void App::heardChat(const std::string& text, int hops, int64_t startMs, int rssi, float snr) {
+void App::heardChat(const std::string& text, int hops, int64_t startMs, int rssi, float snr, int kind, int wpm) {
     int64_t L = slotLen(), slot = (startMs + L / 2) / L;
     Decode d;
     d.id = nextId_++;
@@ -449,12 +480,13 @@ void App::heardChat(const std::string& text, int hops, int64_t startMs, int rssi
     d.parity = (int)(slot & 1);
     d.snr = (int)lroundf(snr);
     d.rssi = rssi;
-    d.kind = 1;
+    d.kind = kind;
+    d.wpm = wpm;
     d.hops = hops;
     d.text = text;
     std::string from, to;
     if (deCalls(text, from, to) && from != cfg.call) lastDe_ = from;
-    tr("heard chat: " + text + " (SNR " + std::to_string(d.snr) + (hops ? ", via " + std::to_string(hops) : std::string()) + ")");
+    tr(std::string(kind == 4 ? "heard CW over LoRa (" + std::to_string(wpm) + " wpm): " : "heard chat: ") + text + " (SNR " + std::to_string(d.snr) + (hops ? ", via " + std::to_string(hops) : std::string()) + ")");
     addRecent(d);
 }
 
@@ -475,7 +507,7 @@ std::string App::adifRecord(const QsoLog& q) const {
     std::string r;
     r += field("CALL", q.call);
     r += field("GRIDSQUARE", q.grid);
-    r += field("MODE", mesh() ? cfg.adifMesh : cfg.adifMode);
+    r += field("MODE", mesh() ? cfg.adifMesh : ftcw() ? cfg.adifFtcw : cfg.adifMode);
     if (q.rptSent != Sequencer::UNSET) r += field("RST_SENT", std::to_string(q.rptSent));
     if (q.rptRcvd != Sequencer::UNSET) r += field("RST_RCVD", std::to_string(q.rptRcvd));
     r += field("QSO_DATE", utcDate(q.startMs));
@@ -489,7 +521,7 @@ std::string App::adifRecord(const QsoLog& q) const {
     r += field("MY_GRIDSQUARE", cfg.grid);
     r += field("PROGRAMID", "LoRaDeck");
     r += field("PROGRAMVERSION", version);
-    r += field("COMMENT", std::string(mesh() ? "FT-MESH" : "FT-LoRa") + " SF" + std::to_string(cfg.sf) + " BW" + std::to_string(cfg.bwKhz));
+    r += field("COMMENT", std::string(modeName()) + " SF" + std::to_string(cfg.sf) + " BW" + std::to_string(cfg.bwKhz));
     return r + "<EOR>\n";
 }
 
@@ -595,6 +627,7 @@ std::string App::command(const std::string& c, const std::map<std::string, std::
         dropOwn();
         chatOut_.clear();
         cwOut_.clear();
+        lcwOut_.clear();
         if (txOn_ && (cur_.kind == TX_CW || cur_.kind == TX_CWID) && radioAbort) radioAbort();
         status("Halted");
         return ok();
@@ -623,7 +656,7 @@ std::string App::command(const std::string& c, const std::map<std::string, std::
         return err("That message is no longer in the list");
     }
     // ---- Terminal: chat over LoRa, or real CW; "<to> DE <me>" added unless the text holds my call
-    if (c == "chat" || c == "cw") {
+    if (c == "chat" || c == "cw" || c == "lcw") {
         if (cfg.call.empty()) return err("Set your callsign first");
         std::string to = upperS(arg(a, "to"));
         std::string t = withId(expand(arg(a, "text"), cfg.call, to), to);
@@ -638,6 +671,13 @@ std::string App::command(const std::string& c, const std::map<std::string, std::
         }
         std::string cw = morseClean(t);
         if (cw.empty()) return err("Nothing to send in CW");
+        if (c == "lcw") {
+            if (cw.size() > (size_t)CHAT_MAX) return err("Too long: " + std::to_string(cw.size()) + " characters with the calls, at most " + std::to_string(CHAT_MAX));
+            if (lcwOut_.size() >= 5) return err("Five messages are already waiting");
+            lcwOut_.push_back(cw);
+            status("CW over LoRa waiting for our next slot");
+            return "{\"ok\":true,\"text\":" + jstr(cw) + "}";
+        }
         int ms = morseMs(cw, cfg.cwWpm);
         if (ms > 60000) return err("Too long for one CW message (" + std::to_string(ms / 1000) + " s at " + std::to_string(cfg.cwWpm) + " wpm; at most 60 s)");
         if (cwOut_.size() >= 3) return err("Three CW messages are already waiting");
@@ -649,7 +689,8 @@ std::string App::command(const std::string& c, const std::map<std::string, std::
         std::string call = upperS(arg(a, "call"));
         Settings chk;
         if (call.empty() || !chk.set("call", call)) return err("Enter the other station's callsign");
-        bool cw = arg(a, "mode") == "cw";
+        std::string lm = arg(a, "mode");
+        bool cw = lm == "cw";
         int64_t end = now(), start = atoll(arg(a, "start").c_str());
         if (start < 1735689600000LL || start > end) start = end;
         char mhz[20];
@@ -659,7 +700,7 @@ std::string App::command(const std::string& c, const std::map<std::string, std::
         std::string r;
         r += field("CALL", call);
         r += field("GRIDSQUARE", chk.grid);
-        r += field("MODE", cw ? "CW" : cfg.adifChat);
+        r += field("MODE", cw ? "CW" : lm == "lcw" ? cfg.adifLcw : cfg.adifChat);
         r += field("RST_SENT", arg(a, "rstS").substr(0, 8));
         r += field("RST_RCVD", arg(a, "rstR").substr(0, 8));
         r += field("NAME", arg(a, "name").substr(0, 40));
@@ -675,7 +716,7 @@ std::string App::command(const std::string& c, const std::map<std::string, std::
         r += field("PROGRAMID", "LoRaDeck");
         r += field("PROGRAMVERSION", version);
         std::string note = arg(a, "note").substr(0, 80);
-        r += field("COMMENT", std::string(cw ? "CW on 33 cm" : "LoRaDeck Terminal") + (note.empty() ? "" : ": " + note));
+        r += field("COMMENT", std::string(cw ? "CW on 33 cm" : lm == "lcw" ? "CW over LoRa" : "LoRaDeck Terminal") + (note.empty() ? "" : ": " + note));
         r += "<EOR>\n";
         return appendLog(r, call, end) ? ok() : err("Could not write the log");
     }
@@ -716,7 +757,7 @@ std::string App::command(const std::string& c, const std::map<std::string, std::
         syncSeq();
         seq.setOpMode(cfg.opMode);
         if (callChanged) loadLog();
-        if (modeChanged) { txq_.clear(); rxSlot_.clear(); curSlot_ = -1; tr(std::string("mode ") + (mesh() ? "FT-MESH" : "FT-LoRa") + ", " + std::to_string(slotLen() / 1000) + " s slots"); }
+        if (modeChanged) { txq_.clear(); rxSlot_.clear(); curSlot_ = -1; tr(std::string("mode ") + modeName() + ", " + std::to_string(slotLen() / 1000) + " s slots"); }
         if (radio && radioConfigure) radioConfigure();
         status("Settings saved");
         return ok();
@@ -741,7 +782,7 @@ std::string App::stateJson(uint32_t sinceRx, bool withCfg) {
     o += "{\"ver\":" + jstr(version) + ",\"call\":" + jstr(cfg.call) + ",\"grid\":" + jstr(cfg.grid);
     o += ",\"utc\":" + jnum(now) + ",\"clock\":" + jbool(clk::utcValid()) + ",\"clkSrc\":" + jstr(clk::sourceName(clk::source())) +
          ",\"clkAge\":" + jnum(clk::sinceSetMs() / 1000) + ",\"opCall\":" + jstr(cfg.operatorCall);
-    o += ",\"mode\":" + jstr(mesh() ? "FT-MESH" : "FT-LoRa") + ",\"hops\":" + jnum(mesh() ? hopsFit() : 0) +
+    o += ",\"mode\":" + jstr(modeName()) + ",\"hops\":" + jnum(mesh() ? hopsFit() : 0) +
          ",\"relay\":" + jbool(relayOn()) + ",\"wpm\":" + jnum(cfg.cwWpm);
     o += ",\"slotSec\":" + jnum(L / 1000) + ",\"phase\":" + jnum(now % L) + ",\"parity\":" + jnum((now / L) & 1);
     o += ",\"radio\":{\"freq\":" + jnum(cfg.freqHz) + ",\"sf\":" + jnum(cfg.sf) + ",\"bw\":" + jnum(cfg.bwKhz) +
@@ -753,7 +794,7 @@ std::string App::stateJson(uint32_t sinceRx, bool withCfg) {
          ",\"txParity\":" + jnum(seq.txParity) + ",\"retries\":" + jnum(seq.retries) +
          ",\"wait\":" + jbool(seq.waitNext) + ",\"wd\":" + jbool(watchdogTripped_) +
          ",\"wdLeft\":" + jnum(wdLeft) + ",\"wdMin\":" + jnum(cfg.watchdogMin) +
-         ",\"chatQ\":" + jnum((int64_t)chatOut_.size()) + ",\"cwQ\":" + jnum((int64_t)cwOut_.size()) + "}";
+         ",\"chatQ\":" + jnum((int64_t)chatOut_.size()) + ",\"cwQ\":" + jnum((int64_t)(cwOut_.size() + lcwOut_.size())) + "}";
     o += ",\"lastDe\":" + jstr(lastDe_);
     o += ",\"rx\":[";
     bool first = true;
@@ -764,7 +805,7 @@ std::string App::stateJson(uint32_t sinceRx, bool withCfg) {
         char dt[12];
         snprintf(dt, sizeof dt, "%.1f", d.dt);
         o += "{\"id\":" + jnum(d.id) + ",\"t\":" + jnum(d.slotMs) + ",\"snr\":" + jnum(d.snr) + ",\"rssi\":" +
-             jnum(d.rssi) + ",\"p\":" + jnum(d.parity) + ",\"dt\":" + dt + ",\"k\":" + jnum(d.kind) + ",\"h\":" + jnum(d.hops) +
+             jnum(d.rssi) + ",\"p\":" + jnum(d.parity) + ",\"dt\":" + dt + ",\"k\":" + jnum(d.kind) + ",\"h\":" + jnum(d.hops) + ",\"w\":" + jnum(d.wpm) +
              ",\"text\":" + jstr(d.text) + "}";
     }
     o += "],\"log\":" + jnum(logCount_) + ",\"status\":" + jstr(status_);

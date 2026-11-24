@@ -28,17 +28,30 @@ while TX is enabled (you at the page), or always (unattended; check the automati
 §97.205, §97.221). Repeating stations identify with the CW ID. Contacts are logged as `FT-MESH`.
 Protocol: docs/FT-LoRa.md.
 
+## FT-CW
+
+FT8-style automatic contacts with the messages **in Morse code**, like RigDeck's FT-CW: the same sequence
+(CQ, grid, report, R-report, RR73), Auto CQ / Auto hunt, tap to call, each message with RigDeck's two-character
+check group (`CQ AC9HP EM69 7Q`). On the air it is a LoRa packet carrying the Morse in the MOPP format (see
+below), so it decodes as reliably as FT-LoRa, and with **Sound** on (Terminal tab) the page plays each message
+as CW at the FT-CW speed (default 40 wpm). Choose it in Settings → Mode; all stations alike. Logged as `FT-CW`.
+
 ## Terminal (chat and CW)
 
 The **Terminal** tab: type and send.
 - **LoRa text**: up to 120 characters in a LoRa packet, sent in your next slot; other LoRaDecks show it (and in
   FT-MESH repeat it).
+- **CW over LoRa**: your text as Morse in a LoRa packet, in the open MOPP format ("Morse over packet",
+  github.com/Morse-Code-over-IP/protocol-mopp), the way CW-over-LoRa devices such as the Morserino-32 send it,
+  with your speed in the packet. Other LoRaDecks show it, and with **Sound** on their browser plays it at your
+  speed (the board has no speaker). A Morserino works on 70 cm, so it cannot hear a 33 cm LoRaDeck; the format
+  is the same.
 - **CW (keyed)**: real CW, the radio's carrier keyed on and off on the channel frequency, at the CW speed in
   Settings; copy it with any 33 cm receiver. LoRaDecks cannot decode CW.
 - Every message ends with **"&lt;to&gt; DE &lt;your call&gt;"** (or "DE &lt;your call&gt;" when no To call is set),
   unless it already contains your call. The To call fills in from the last "DE" call heard.
 - Six macro buttons, edited in Settings ({MY} = your call, {TO} = the other station).
-- **Log this contact**: call, mode (LoRa text, logged as `LORA-CHAT`, or `CW`), RST sent/received, name,
+- **Log this contact**: call, mode (LoRa text `LORA-CHAT`, CW over LoRa `LORA-CW`, or keyed `CW`), RST sent/received, name,
   grid, note. Time on = the first message, time off = now.
 
 The **CW ID** ("DE &lt;call&gt;" in CW) goes out every 10 minutes (setting) while the station transmits, in the

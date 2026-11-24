@@ -66,7 +66,7 @@ public:
     Glance glance();
 
 private:
-    enum { TX_FT = 0, TX_RELAY = 1, TX_CHAT = 2, TX_CW = 3, TX_CWID = 4 };
+    enum { TX_FT = 0, TX_RELAY = 1, TX_CHAT = 2, TX_CW = 3, TX_CWID = 4, TX_LCW = 5 };
     struct TxItem {
         int64_t at = 0;            // UTC ms (our clock) to start
         int64_t late = 500;        // dropped when it cannot start within this long
@@ -79,6 +79,8 @@ private:
     std::string dir_, status_;
     int64_t slotLen() const { return (int64_t)(mesh() ? cfg.meshSlotSec : cfg.slotSec) * 1000; }
     bool mesh() const { return cfg.ftMode == FT_MESH; }
+    bool ftcw() const { return cfg.ftMode == FT_CW; }
+    const char* modeName() const { return mesh() ? "FT-MESH" : ftcw() ? "FT-CW" : "FT-LoRa"; }
     int64_t now() const { return clk::utcMs() + clockSkewMs; }
     int air(int len) const { return airtime ? airtime(len) : airMs + (len - FTL_PACKET) * 5; }
     int windowMs() const;                                     // FT-MESH relay window
@@ -94,7 +96,8 @@ private:
     bool txOn_ = false;
     TxItem cur_;                                              // what is on the air now
     std::string ftText_;                                      // the FT message planned for this slot
-    std::deque<std::string> chatOut_, cwOut_;                 // Terminal messages waiting for our next slot
+    std::deque<std::string> chatOut_, cwOut_, lcwOut_;        // Terminal messages waiting for our next slot
+    int moppSerial_ = 0;
     std::map<uint16_t, int64_t> seen_;                        // FT-MESH / chat ids heard or sent -> slot
     int64_t lastTxMono_ = -1, lastIdMono_ = -1;               // for the CW ID
     int64_t lastUiMono_ = 0;
@@ -113,7 +116,7 @@ private:
     void dropOwn();                                           // our own planned transmissions (not relays)
     uint16_t msgId(const uint8_t* d, int n, int64_t slot) const;
     void heardFt(const std::string& text, int hops, int64_t sentMs, int rssi, float snr);
-    void heardChat(const std::string& text, int hops, int64_t sentMs, int rssi, float snr);
+    void heardChat(const std::string& text, int hops, int64_t sentMs, int rssi, float snr, int kind = 1, int wpm = 0);
     bool meshDup(uint16_t id, int64_t slot, float snr);
     void meshRelay(const uint8_t* data, int len, int left, int taken, int64_t slot, float snr, uint16_t id);
     void addRecent(const Decode& d);

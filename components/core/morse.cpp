@@ -22,6 +22,13 @@ const char* morseOf(char c) {
     }
 }
 
+char morseChar(const std::string& code) {
+    static const char set[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/?.,=+-";
+    for (const char* c = set; *c; c++)
+        if (code == morseOf(*c)) return *c;
+    return 0;
+}
+
 std::string morseClean(const std::string& text) {
     std::string o;
     for (char c : text) {

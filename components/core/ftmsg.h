@@ -13,7 +13,9 @@ struct Decode {
     int rssi = 0;              // dBm
     float dt = 0;              // seconds after the slot start
     float freq = 0;            // unused for LoRa (kept for the sequencer)
-    int kind = 0;              // 0 FT message, 1 chat (Terminal) message, 2 CW we sent, 3 a relay we sent
+    int kind = 0;              // 0 FT message, 1 chat (Terminal) text, 2 keyed CW we sent, 3 a relay we sent,
+                               // 4 CW over LoRa (MOPP, Terminal)
+    int wpm = 0;               // MOPP packets (FT-CW, CW over LoRa): the sender's speed, for playing it
     int hops = 0;              // FT-MESH / chat: how many stations repeated it before we heard it
     std::string text;
 };

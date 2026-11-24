@@ -4,7 +4,7 @@
 #include <cstdint>
 
 enum OpMode { OP_MANUAL = 0, OP_AUTO_CQ = 1, OP_AUTO_HUNT = 2 };
-enum FtMode { FT_LORA = 0, FT_MESH = 1 };                // all stations on a channel use the same
+enum FtMode { FT_LORA = 0, FT_MESH = 1, FT_CW = 2 };    // all stations on a channel use the same
 enum MeshRelay { RELAY_OFF = 0, RELAY_TX_ON = 1, RELAY_ALWAYS = 2 };
 
 struct Settings {
@@ -27,7 +27,8 @@ struct Settings {
     int meshHops = 3;                    // how many times a message is repeated at most
     int meshRelay = RELAY_TX_ON;         // repeat for others: off / while TX is enabled (operator present) / always
     // LoRa-CW: real CW (keyed carrier) for the CW ID and CW messages; chat messages in LoRa packets
-    int cwWpm = 20;
+    int cwWpm = 20;                      // keyed CW and LoRa-CW from the Terminal
+    int ftcwWpm = 40;                    // FT-CW: the speed written into its packets (for playing them as CW)
     int cwIdMin = 10;                    // CW ID every this many minutes while transmitting (0 = off)
     // Terminal macros ({MY} = my call, {TO} = the other station)
     std::string cwMacro[6] = {"CQ CQ CQ DE {MY} {MY} K", "{TO} DE {MY} UR 599 599 K", "{TO} DE {MY} R TU 73 SK",
@@ -46,7 +47,9 @@ struct Settings {
     // logging
     std::string adifMode = "FT-LORA";    // ADIF MODE written for these contacts
     std::string adifMesh = "FT-MESH";    // ... in FT-MESH
-    std::string adifChat = "LORA-CHAT";  // ... for contacts logged on the Terminal page
+    std::string adifChat = "LORA-CHAT";  // ... for Terminal contacts in LoRa text
+    std::string adifFtcw = "FT-CW";      // ... in FT-CW (FT messages in Morse, in LoRa packets)
+    std::string adifLcw = "LORA-CW";     // ... for Terminal contacts in CW over LoRa
     std::string logHost;                 // UDP ADIF forwarding (e.g. Log4OM), empty = off
     int logPort = 2237;
     // GPS module (optional, NMEA on a UART): time, and the grid if gpsGrid

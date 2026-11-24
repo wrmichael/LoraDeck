@@ -17,7 +17,9 @@ Everything is operated from the web page; the OLED shows status only.
   150 ms, nearest slot): clocks may differ by almost half a slot; late TX (> 650 ms into the slot) is skipped.
 - Modes (2026-11-23): FT-LoRa (0xF1, 11 bytes), FT-MESH (0xF2, 14 bytes, every station repeats, 15 s slots,
   relay windows, weakest first, suppression), Terminal text (0xC1, "<to> DE <me>" appended), real CW (SX1262
-  SetTxContinuousWave keying) for CW ID and Terminal CW; ADIF FT-LORA / FT-MESH / LORA-CHAT / CW.
+  SetTxContinuousWave keying) for CW ID and Terminal CW; FT-CW (ftMode 2: FT messages + RigDeck check group as
+  Morse in MOPP packets, first byte 0x40-0x7F), CW over LoRa on the Terminal (MOPP, Morserino style), browser
+  plays received CW (WebAudio); ADIF FT-LORA / FT-MESH / FT-CW / LORA-CHAT / LORA-CW / CW.
 - Station call vs operator call (ADIF OPERATOR). Wayne uses club call W9AIM on the second board.
 - Default 917.000 MHz SF9 BW125 CR4/5 14 dBm: inside the ARRL 33 cm 915-921 MHz spread-spectrum block, clear of
   Meshtastic LongFast (906.875) and LoRaWAN. Hams under Part 97: no 500 kHz minimum (that is §15.247, unlicensed).
@@ -25,7 +27,7 @@ Everything is operated from the web page; the OLED shows status only.
 - Default hotspot LoRaDeck-XXXXXX (MAC suffix), password loradeck1, 192.168.4.1.
 
 ## Code map
-- components/core (host-testable): nmea (RMC/GGA, Maidenhead), morse, app (slots, TX queue, mesh relay, chat/CW, sequencer glue, ADIF log /data/<CALL>_log.adi, state JSON, commands),
+- components/core (host-testable): nmea (RMC/GGA, Maidenhead), morse, mopp (MOPP codec, cwFrame/cwCheck), app (slots, TX queue, mesh relay, chat/CW, sequencer glue, ADIF log /data/<CALL>_log.adi, state JSON, commands),
   qso (sequencer), settings (key=value /data/settings.txt), ftmsg (pack/unpack), clock.
 - components/ft8msg: ft8_lib message.c/text.c (MIT).
 - main: sx1262 (SPI driver; pins NSS 8, SCK 9, MOSI 10, MISO 11, RST 12, BUSY 13, DIO1 14; TCXO 1.8 V on DIO3; RF
@@ -56,7 +58,8 @@ Everything is operated from the web page; the OLED shows status only.
   that); "/" in the call becomes "_" in the log file name; warning when another station sends as our call.
 - **First real two-board FT-LoRa QSO 2026-11-23**: AC9HP and club call W9AIM, Auto CQ / Auto hunt, full sequence
   and log. Second board done.
-- 0.2.0 (2026-11-23, not yet built on the board): everything in "Modes" and "Clock" above, GPS, operator call,
+- 0.2.1: FT-CW and CW over LoRa (Wayne asked; the Morserino-32 sends CW over LoRa as packets, not a keyed carrier).
+- 0.2.0 (2026-11-23, released as Beta, not yet tested on the boards): everything in "Modes" and "Clock" above, GPS, operator call,
   web flasher. Next: test it, enable GitHub Pages, first release; then the board updating itself from the internet
   (esp_https_ota, no browser), settings import/copy, LoRa APRS, mDNS,
   Heltec V4 support. Full list in docs/ROADMAP.md.

@@ -6,6 +6,9 @@
   15 min, GPS module (NMEA, optional PPS, grid), operator call (ADIF OPERATOR), console log, browser flasher and
   Install latest, FT-MESH, Terminal (LoRa text chat and real CW, macros, QSO logging), CW ID.
 
+- 0.2.1: FT-CW (FT messages in Morse, MOPP packets, RigDeck check group), CW over LoRa on the Terminal
+  (Morserino-style MOPP), received CW played as sound in the browser.
+
 ## Now
 - Test 0.2.0 on the boards: FT-MESH with three boards (one out of range of another), Terminal chat, CW on a
   33 cm receiver, GPS if a module is fitted. Turn on GitHub Pages and make the first release.
@@ -17,6 +20,11 @@
   the new version does not start. Buttons "Check for update" / "Update now" on the page, optional daily check
   that only reports (never installs while transmitting). For boards out of reach (on a mast). Needs the app
   part of the image (from 0x20000) or a separate app-only .bin published by release.bat.
+- **Decode keyed CW** (experimental): the SX1262 gives no audio, but in FSK receive mode its instantaneous RSSI
+  can be sampled about every millisecond; the on/off envelope is then Morse to decode (matched filter for the
+  dot length, as RigDeck's FT-CW decoder). Would let LoRaDecks read real CW (the CW ID, hand-sent CW from other
+  33 cm stations, FT-CW as a keyed carrier). Needs strong signals (far less sensitive than LoRa) and the radio
+  cannot listen for LoRa at the same time. To be tried on the board first.
 - Settings import / copy between boards.
 - LoRa APRS.
 - mDNS (loradeck.local).

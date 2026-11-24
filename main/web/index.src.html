@@ -107,7 +107,8 @@ h3{margin:4px 0 10px;font-size:16px}
       <div class="row"><h3 style="margin-right:auto">Terminal</h3><span class="hint" id="termInfo"></span></div>
       <div id="term"></div>
       <div class="row" style="margin-top:8px">
-        <span class="seg"><button class="b on" id="viaChat" title="Text in LoRa packets: other LoRaDecks show it">LoRa text</button><button class="b" id="viaCw" title="Real CW, a keyed carrier: copy it on any 33 cm receiver">CW (keyed)</button></span>
+        <span class="seg"><button class="b on" id="viaChat" title="Text in LoRa packets: other LoRaDecks show it">LoRa text</button><button class="b" id="viaLcw" title="CW in LoRa packets (MOPP, as the Morserino sends it): LoRaDecks show it and can play it">CW over LoRa</button><button class="b" id="viaCw" title="Real CW, a keyed carrier: copy it on any 33 cm receiver">CW (keyed)</button></span>
+        <button class="b" id="snd" title="Play received CW (CW over LoRa, FT-CW) as a tone in this browser">🔇 Sound</button>
         <label style="display:flex;gap:6px;align-items:center;margin-left:auto">To <input id="termTo" style="width:120px" autocapitalize="characters" placeholder="their call"></label>
       </div>
       <div class="row" style="margin-top:8px"><input id="termText" placeholder="Type and press Enter" autocomplete="off" style="flex:1"><button class="b grn" id="termSend">Send</button></div>
@@ -117,7 +118,7 @@ h3{margin:4px 0 10px;font-size:16px}
     <div class="card">
       <h3>Log this contact</h3>
       <label class="f"><span>Call</span><input id="lcCall" autocapitalize="characters"></label>
-      <label class="f"><span>Mode</span><select id="lcMode"><option value="chat">LoRa text (Terminal)</option><option value="cw">CW</option></select></label>
+      <label class="f"><span>Mode</span><select id="lcMode"><option value="chat">LoRa text (Terminal)</option><option value="lcw">CW over LoRa</option><option value="cw">CW (keyed)</option></select></label>
       <label class="f"><span>RST sent</span><input id="lcRstS" placeholder="599"></label>
       <label class="f"><span>RST received</span><input id="lcRstR" placeholder="599"></label>
       <label class="f"><span>Name</span><input id="lcName"></label>
@@ -142,7 +143,7 @@ h3{margin:4px 0 10px;font-size:16px}
     <label class="f"><span>Grid locator</span><input data-k="grid" autocapitalize="characters"></label>
     <label class="f"><span>Directed CQ (e.g. POTA, blank = plain)</span><input data-k="cqTag" autocapitalize="characters"></label>
     <h3>Mode</h3>
-    <label class="f"><span>Mode (all stations on the channel alike)</span><select data-k="ftMode"><option value="0">FT-LoRa: direct</option><option value="1">FT-MESH: every station repeats</option></select></label>
+    <label class="f"><span>Mode (all stations on the channel alike)</span><select data-k="ftMode"><option value="0">FT-LoRa: direct</option><option value="1">FT-MESH: every station repeats</option><option value="2">FT-CW: FT messages in Morse (LoRa packets)</option></select></label>
     <label class="f"><span>FT-MESH slot length, seconds</span><input data-k="meshSlotSec" type="number" min="6" max="60"></label>
     <label class="f"><span>FT-MESH repeats (hops) at most</span><input data-k="meshHops" type="number" min="1" max="5"></label>
     <label class="f"><span>Repeat for other stations</span><select data-k="meshRelay"><option value="0">no</option><option value="1">while TX is enabled (operator present)</option><option value="2">always (unattended)</option></select></label>
@@ -154,7 +155,8 @@ h3{margin:4px 0 10px;font-size:16px}
     <label class="f"><span>POTA mode: wait for Next QSO</span><select data-k="confirmQso"><option value="0">off</option><option value="1">on</option></select></label>
     <label class="f"><span>TX watchdog, minutes (0 = off)</span><input data-k="watchdogMin" type="number" min="0" max="120"></label>
     <h3>CW (keyed carrier) and Terminal</h3>
-    <label class="f"><span>CW speed, wpm</span><input data-k="cwWpm" type="number" min="5" max="40"></label>
+    <label class="f"><span>CW speed, wpm (keyed CW and CW over LoRa)</span><input data-k="cwWpm" type="number" min="5" max="40"></label>
+    <label class="f"><span>FT-CW speed, wpm (for playing it as sound)</span><input data-k="ftcwWpm" type="number" min="20" max="60"></label>
     <label class="f"><span>CW ID every, minutes, while transmitting (0 = off)</span><input data-k="cwIdMin" type="number" min="0" max="30"></label>
     <label class="f"><span>Macro 1</span><input data-k="macro1"></label>
     <label class="f"><span>Macro 2</span><input data-k="macro2"></label>
@@ -186,6 +188,8 @@ h3{margin:4px 0 10px;font-size:16px}
     <label class="f"><span>ADIF mode name, FT-LoRa</span><input data-k="adifMode"></label>
     <label class="f"><span>ADIF mode name, FT-MESH</span><input data-k="adifMesh"></label>
     <label class="f"><span>ADIF mode name, Terminal text contacts</span><input data-k="adifChat"></label>
+    <label class="f"><span>ADIF mode name, FT-CW</span><input data-k="adifFtcw"></label>
+    <label class="f"><span>ADIF mode name, Terminal CW over LoRa</span><input data-k="adifLcw"></label>
     <label class="f"><span>Send each QSO to (UDP host, e.g. Log4OM PC)</span><input data-k="logHost" placeholder="off"></label>
     <label class="f"><span>UDP port</span><input data-k="logPort" type="number"></label>
     <div class="row" style="margin-top:12px"><button class="b grn" id="save">Save</button><button class="b" id="restart">Restart</button><a href="/api/settings"><button class="b">Export settings</button></a><span id="setmsg" class="hint"></span></div>
@@ -253,19 +257,38 @@ const termLines=[];
 function termAdd(d){
   const el=$("term"),atBottom=el.scrollTop+el.clientHeight>=el.scrollHeight-20;
   const div=document.createElement("div");
-  div.className=d.k===2?"cwl me":d.snr===99?"me":"";
+  div.className=d.k===2||d.k===4?(d.snr===99?"cwl me":"cwl"):d.snr===99?"me":"";
   const t=document.createElement("span");t.className="t";t.textContent=utc(d.t||Date.now()).substr(0,5)+(d.snr===99?" >":" "+d.snr);
-  div.appendChild(t);div.appendChild(document.createTextNode((d.k===2?"CW: ":"")+d.text+(d.h&&d.snr!==99?"  (via "+d.h+")":"")));
+  div.appendChild(t);div.appendChild(document.createTextNode((d.k===2?"CW: ":d.k===4?"CW·LoRa: ":"")+d.text+(d.h&&d.snr!==99?"  (via "+d.h+")":"")));
   el.appendChild(div);while(el.children.length>200)el.removeChild(el.firstChild);
   if(atBottom)el.scrollTop=el.scrollHeight;
   if(!lcStart)lcStart=d.t||Date.now();
 }
 function termSys(txt){const div=document.createElement("div");div.className="sys";div.textContent=txt;$("term").appendChild(div);$("term").scrollTop=$("term").scrollHeight;}
-function setVia(v){via=v;$("viaChat").classList.toggle("on",v==="chat");$("viaCw").classList.toggle("on",v==="cw");$("lcMode").value=v;termHints();}
-$("viaChat").onclick=()=>setVia("chat");$("viaCw").onclick=()=>setVia("cw");
+function setVia(v){via=v;$("viaChat").classList.toggle("on",v==="chat");$("viaLcw").classList.toggle("on",v==="lcw");$("viaCw").classList.toggle("on",v==="cw");$("lcMode").value=v;termHints();}
+$("viaChat").onclick=()=>setVia("chat");$("viaLcw").onclick=()=>setVia("lcw");$("viaCw").onclick=()=>setVia("cw");
+// ---- received CW played as a tone (the board has no speaker): CW over LoRa, and FT-CW messages
+const MORSE={A:".-",B:"-...",C:"-.-.",D:"-..",E:".",F:"..-.",G:"--.",H:"....",I:"..",J:".---",K:"-.-",L:".-..",M:"--",N:"-.",O:"---",P:".--.",Q:"--.-",R:".-.",S:"...",T:"-",U:"..-",V:"...-",W:".--",X:"-..-",Y:"-.--",Z:"--..",
+  0:"-----",1:".----",2:"..---",3:"...--",4:"....-",5:".....",6:"-....",7:"--...",8:"---..",9:"----.","/":"-..-.","?":"..--..",".":".-.-.-",",":"--..--","=":"-...-","+":".-.-.","-":"-....-"};
+let actx=null,audioAt=0,sound=false;
+$("snd").onclick=()=>{sound=!sound;$("snd").textContent=(sound?"🔊":"🔇")+" Sound";$("snd").classList.toggle("on",sound);
+  if(sound&&!actx){try{actx=new (window.AudioContext||window.webkitAudioContext)();}catch(e){sound=false;}}};
+function playCw(text,wpm){
+  if(!sound||!actx||!wpm)return;
+  const u=1.2/wpm,g=actx.createGain(),o=actx.createOscillator();
+  o.frequency.value=650;g.gain.value=0;o.connect(g);g.connect(actx.destination);
+  let t=Math.max(actx.currentTime+0.05,audioAt);const t0=t;
+  for(const ch of text.toUpperCase()){
+    if(ch===" "){t+=4*u;continue;}
+    const c=MORSE[ch];if(!c)continue;
+    for(const e of c){const d=(e==="."?1:3)*u;g.gain.setTargetAtTime(0.25,t,0.004);g.gain.setTargetAtTime(0,t+d,0.004);t+=d+u;}
+    t+=2*u;
+  }
+  o.start(t0);o.stop(t+0.1);audioAt=t+3*u;
+}
 function termHints(){
   if(!S.call){$("termHint").textContent="Set your callsign in Settings first.";return;}
-  $("termHint").textContent=via==="chat"?"LoRa text goes out in your next slot ("+S.slotSec+" s slots), after any FT message; other LoRaDecks show it here."+(S.mode==="FT-MESH"?" In FT-MESH it is repeated like the FT messages.":"")
+  $("termHint").textContent=via==="lcw"?"CW over LoRa: your text as Morse in a LoRa packet (the MOPP format the Morserino uses), at "+S.wpm+" wpm, in your next slot. LoRaDecks show it, and with Sound on they play it at your speed.":via==="chat"?"LoRa text goes out in your next slot ("+S.slotSec+" s slots), after any FT message; other LoRaDecks show it here."+(S.mode==="FT-MESH"?" In FT-MESH it is repeated like the FT messages.":"")
     :"Real CW at "+S.wpm+" wpm in the quiet part of your next slot. A long message runs over into the next slots. LoRaDecks cannot decode CW: listen on a 33 cm receiver.";
   $("termInfo").textContent=S.mode+" · "+S.slotSec+" s slots"+(S.tx&&(S.tx.chatQ||S.tx.cwQ)?" · waiting: "+(S.tx.chatQ+S.tx.cwQ):"");
 }
@@ -326,9 +349,9 @@ function renderRx(){
   for(const d of rxList){
     const div=document.createElement("div");
     const me=S.call&&(" "+d.text+" ").includes(" "+S.call+" ");
-    div.className=d.k===3?"rly":d.k===1?"chat":d.snr===99?"tx":d.text.startsWith("CQ ")?"cq":me?"me":"";
+    div.className=d.k===3?"rly":d.k===1||d.k===4?"chat":d.snr===99?"tx":d.text.startsWith("CQ ")?"cq":me?"me":"";
     div.innerHTML=`<span>${utc(d.t)}</span><span>${d.snr===99?"TX":d.snr}</span><span title="clock offset of the sender, s">${d.snr===99?"":(d.dt>=0?"+":"")+d.dt.toFixed(1)}</span><span></span>`;
-    div.lastChild.textContent=(d.k===3?"↻ ":d.k===2?"CW: ":d.k===1?"✉ ":"")+d.text+(d.h&&d.snr!==99?"  ↻"+d.h:"");
+    div.lastChild.textContent=(d.k===3?"↻ ":d.k===2?"CW: ":d.k===4?"♪ ":d.k===1?"✉ ":"")+d.text+(d.h&&d.snr!==99?"  ↻"+d.h:"");
     if(d.snr!==99&&d.k===0)div.onclick=async()=>{const r=await cmd("pick",{id:d.id});if(!r.ok)alert(r.err);poll();};
     el.appendChild(div);
   }
@@ -382,7 +405,7 @@ async function poll(){
     const newCfg=!!j.cfg;
     if(j.cfg){S.cfg=j.cfg;cfgLoaded=true;}else j.cfg=S.cfg;
     S=j;fails=0;
-    for(const d of j.rx){rxList.push(d);since=Math.max(since,d.id);if(d.k===1||d.k===2)termAdd(d);}
+    for(const d of j.rx){rxList.push(d);since=Math.max(since,d.id);if(d.k===1||d.k===2||d.k===4)termAdd(d);if(d.w&&d.snr!==99)playCw(d.text,d.w);}
     while(rxList.length>100)rxList.shift();
     if(j.rx.length)renderRx();
     render();

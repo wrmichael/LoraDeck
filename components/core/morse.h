@@ -8,5 +8,7 @@ const char* morseOf(char c);
 int morseUnits(const std::string& text);
 // Milliseconds to send a text at this speed (PARIS: 50 units a word, a unit = 1200 / wpm ms).
 inline int morseMs(const std::string& text, int wpm) { return morseUnits(text) * 1200 / (wpm > 0 ? wpm : 20); }
+// The character for dots and dashes (".-" -> 'A'), or 0.
+char morseChar(const std::string& code);
 // Upper case, only characters that have a code, single spaces.
 std::string morseClean(const std::string& text);

@@ -4,6 +4,7 @@
 #include "app.h"
 #include "nmea.h"
 #include "morse.h"
+#include "mopp.h"
 #include <cmath>
 #include "clock.h"
 #include <cstdio>
@@ -158,6 +159,70 @@ static void meshTests() {
     }
 }
 
+// ---- FT-CW: FT messages in Morse (MOPP packets with RigDeck's check group); CW over LoRa on the Terminal
+static void ftcwTests() {
+    {
+        uint8_t ex[] = {0x5B, 0x41, 0xA4, 0x61, 0x91, 0x45, 0x70};   // the MOPP specification's example
+        std::vector<uint8_t> v = moppEncode("PARIS", 16, 27);
+        CHECK(v.size() == 7 && memcmp(v.data(), ex, 7) == 0);
+        std::string t; int w = 0, sn = 0;
+        CHECK(moppDecode(ex, 7, t, w, sn) && t == "PARIS" && w == 16 && sn == 27);
+        std::string m;
+        CHECK(cwUnframe(cwFrame("CQ AC9HP EM69"), m) && m == "CQ AC9HP EM69");
+        CHECK(!cwUnframe("CQ AC9HP EM69 ZZ", m));
+    }
+    const int N = 2;
+    static Node n[N];
+    const char* calls[N] = {"KC9CWA", "KC9CWB"};
+    mair.clear();
+    for (int i = 0; i < N; i++) {
+        Node& x = n[i];
+        x.idx = i;
+        std::string dir = "/tmp/ld_c" + std::to_string(i);
+        mkdir(dir.c_str(), 0755);
+        unlink((dir + "/settings.txt").c_str());
+        unlink((dir + "/" + calls[i] + "_log.adi").c_str());
+        x.app.begin(dir);
+        x.app.airtime = airOf;
+        x.app.radioSend = [&x](const uint8_t* d, int len) {
+            if (len > 0 && (d[0] >> 6) == 1) x.cw.push_back("mopp");
+            MAir a{x.idx, std::vector<uint8_t>(d, d + len), simMs, simMs + airOf(len), false};
+            mair.push_back(a);
+            x.on.push_back({a.start, a.end});
+            return true;
+        };
+        x.app.radioCw = [](const std::string&, int) { return false; };
+        x.app.onLogged = [&x](const std::string& r) { x.logged.push_back(r); };
+        CHECK(x.app.command("set", {{"call", calls[i]}, {"grid", "EN61"}, {"watchdogMin", "0"}, {"ftMode", "2"},
+                                    {"opMode", i == 0 ? "1" : "2"}, {"cwIdMin", "0"}}).find("\"ok\":true") != std::string::npos);
+        CHECK(x.app.command("txen", {{"on", "1"}}).find("true") != std::string::npos);
+    }
+    auto step = [&]() {
+        for (auto it = mair.begin(); it != mair.end();) {
+            if (it->end > simMs) { ++it; continue; }
+            n[it->from].app.onTxDone();
+            if (!it->cw) n[1 - it->from].app.onPacket(it->d.data(), (int)it->d.size(), -95, 3.0f);
+            it = mair.erase(it);
+        }
+        for (Node& x : n) x.app.tick();
+        simMs += 10;
+    };
+    int64_t start = simMs;
+    while (simMs < start + 120000 && !(n[0].logged.size() && n[1].logged.size())) step();
+    CHECK(n[0].logged.size() == 1 && n[1].logged.size() == 1);
+    CHECK(!n[0].cw.empty());                                  // it went out as MOPP packets
+    if (!n[0].logged.empty()) CHECK(n[0].logged[0].find("<MODE:5>FT-CW") != std::string::npos);
+    printf("FT-CW QSO: %s in %.1f s\n", n[0].logged.size() && n[1].logged.size() ? "logged" : "FAILED", (simMs - start) / 1000.0);
+    // CW over LoRa from the Terminal: shown with the sender's speed, the call learned
+    std::string r = n[0].app.command("lcw", {{"text", "GM OM UR 599"}, {"to", "KC9CWB"}});
+    CHECK(r.find("GM OM UR 599 KC9CWB DE KC9CWA") != std::string::npos);
+    for (int i = 0; i < 2000 && n[1].app.stateJson(0, false).find("\"lastDe\":\"KC9CWA\"") == std::string::npos; i++) step();
+    std::string js = n[1].app.stateJson(0, false);
+    CHECK(js.find("\"k\":4,\"h\":0,\"w\":20,\"text\":\"GM OM UR 599 KC9CWB DE KC9CWA\"") != std::string::npos);
+    r = n[1].app.command("logchat", {{"call", "KC9CWA"}, {"mode", "lcw"}, {"rstS", "599"}});
+    CHECK(r.find("true") != std::string::npos && n[1].logged.size() == 2 && n[1].logged.back().find("<MODE:7>LORA-CW") != std::string::npos);
+}
+
 int main() {
     // packing
     const char* msgs[] = {"CQ AC9HP EM69", "W1AW AC9HP -12", "W1AW AC9HP R-05", "W1AW AC9HP RR73", "CQ POTA AC9HP EM69", "AC9HP W1AW FN31"};
@@ -309,6 +374,7 @@ int main() {
     CHECK(A.app.withId("W9AIM DE AC9HP K", "W9AIM") == "W9AIM DE AC9HP K");   // already identified
 
     meshTests();
+    ftcwTests();
     printf("t_core: %d checks, %d failed\n", checks, fails);
     return fails ? 1 : 0;
 }

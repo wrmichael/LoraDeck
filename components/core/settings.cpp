@@ -38,8 +38,8 @@ bool gridOk(const std::string& s) {
     return true;
 }
 const char* const kKeys[] = {"call", "operator", "grid", "cqTag", "opMode", "maxRetries", "useRR73", "confirmQso", "cqParity",
-                             "slotSec", "watchdogMin", "ftMode", "meshSlotSec", "meshHops", "meshRelay", "cwWpm", "cwIdMin", "freqHz", "sf", "bwKhz", "cr", "powerDbm", "apSsid", "apPass",
-                             "staSsid", "staPass", "adifMode", "adifMesh", "adifChat", "logHost", "logPort",
+                             "slotSec", "watchdogMin", "ftMode", "meshSlotSec", "meshHops", "meshRelay", "cwWpm", "ftcwWpm", "cwIdMin", "freqHz", "sf", "bwKhz", "cr", "powerDbm", "apSsid", "apPass",
+                             "staSsid", "staPass", "adifMode", "adifMesh", "adifChat", "adifFtcw", "adifLcw", "logHost", "logPort",
                              "gpsRx", "gpsTx", "gpsBaud", "gpsPps", "gpsGrid",
                              "macro1", "macro2", "macro3", "macro4", "macro5", "macro6"};
 bool secret(const std::string& k) { return k == "apPass" || k == "staPass"; }
@@ -72,7 +72,10 @@ bool Settings::set(const std::string& k, const std::string& v) {
         cwMacro[k[5] - '1'] = upper(v);
         return true;
     }
-    if (k == "ftMode") { if (!toInt(v, 0, 1, n)) return false; ftMode = (int)n; return true; }
+    if (k == "ftMode") { if (!toInt(v, 0, 2, n)) return false; ftMode = (int)n; return true; }
+    if (k == "ftcwWpm") { if (!toInt(v, 20, 60, n)) return false; ftcwWpm = (int)n; return true; }
+    if (k == "adifFtcw") { std::string u = upper(v); if (u.empty() || u.size() > 16) return false; adifFtcw = u; return true; }
+    if (k == "adifLcw") { std::string u = upper(v); if (u.empty() || u.size() > 16) return false; adifLcw = u; return true; }
     if (k == "meshSlotSec") { if (!toInt(v, 6, 60, n)) return false; meshSlotSec = (int)n; return true; }
     if (k == "meshHops") { if (!toInt(v, 1, 5, n)) return false; meshHops = (int)n; return true; }
     if (k == "meshRelay") { if (!toInt(v, 0, 2, n)) return false; meshRelay = (int)n; return true; }
@@ -114,6 +117,9 @@ std::string Settings::get(const std::string& k) const {
     if (k == "watchdogMin") return std::to_string(watchdogMin);
     if (k.size() == 6 && k.compare(0, 5, "macro") == 0 && k[5] >= '1' && k[5] <= '6') return cwMacro[k[5] - '1'];
     if (k == "ftMode") return std::to_string(ftMode);
+    if (k == "ftcwWpm") return std::to_string(ftcwWpm);
+    if (k == "adifFtcw") return adifFtcw;
+    if (k == "adifLcw") return adifLcw;
     if (k == "meshSlotSec") return std::to_string(meshSlotSec);
     if (k == "meshHops") return std::to_string(meshHops);
     if (k == "meshRelay") return std::to_string(meshRelay);

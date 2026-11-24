@@ -49,6 +49,16 @@ Same messages and sequence, but every station also repeats what it hears.
 FT message. In FT-LoRa the hop byte is 0 (not repeated); in FT-MESH it is repeated like the FT messages. LoRaDeck
 ends each message with "&lt;to&gt; DE &lt;sender&gt;" unless the text already holds the sender's call.
 
+## FT-CW and CW over LoRa (MOPP packets)
+Morse in a packet, in the MOPP format (github.com/Morse-Code-over-IP/protocol-mopp): a 14-bit header (version
+`01`, 6-bit serial number, 6-bit speed in wpm), then 2 bits per element, MSB first: `01` dit, `10` dah, `00` end
+of character, `11` end of word (in place of the last end of character); the last byte is padded with zeros.
+The first byte is 0x40..0x7F, so it is never taken for 0xC1 / 0xF1 / 0xF2.
+- **FT-CW**: the FT message with RigDeck's check group (CRC-16/CCITT of the text, mod 1296, as two base-36
+  characters): `CQ AC9HP EM69 7Q`. Same slots and timing as FT-LoRa. A copy whose check group does not match,
+  or that is not a standard message, is shown as plain CW.
+- **CW over LoRa** (Terminal): any text, at the sender's CW speed, sent in its own slot.
+
 ## CW
 Real CW: the SX1262 keys an unmodulated carrier on the channel frequency, in the quiet part of the sender's own
 slot (after the packets and, in FT-MESH, the relay windows). Used for the CW ID ("DE &lt;call&gt;", every
