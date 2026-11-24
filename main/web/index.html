@@ -481,8 +481,15 @@ async function otaLatest(ch){
 }
 $("otaStable").onclick=()=>otaLatest("stable");
 $("otaBeta").onclick=()=>otaLatest("beta");
+let otaBusy=false;
 async function otaSend(img){
   const m=$("otaMsg");
+  if(otaBusy){m.textContent="An update is already being sent.";return;}
+  otaBusy=true;["otaStable","otaBeta","otaGo"].forEach(i=>$(i).disabled=true);
+  try{await otaSend2(img);}finally{otaBusy=false;["otaStable","otaBeta","otaGo"].forEach(i=>$(i).disabled=false);}
+}
+async function otaSend2(img){
+  const m=$("otaMsg"),sid=1+Math.floor(Math.random()*2e9);
   // a complete flasher image (bootloader at 0, partition table at 0x8000): the program starts at 0x20000
   if(img.length>0x20000&&img[0x8000]===0xAA&&img[0x8001]===0x50)img=img.subarray(0x20000);
   if(img[0]!==0xE9){m.textContent="That file is not LoRaDeck firmware.";return;}
@@ -490,12 +497,15 @@ async function otaSend(img){
   for(let off=0;off<total;){
     const piece=img.subarray(off,Math.min(total,off+P));let j=null;
     for(let t=0;t<6;t++){
-      try{j=await (await fetch(`/api/otachunk?off=${off}&total=${total}&crc=${crc32(piece)}`,{method:"POST",body:piece})).json();}
+      try{j=await (await fetch(`/api/otachunk?off=${off}&total=${total}&crc=${crc32(piece)}&sid=${sid}`,{method:"POST",body:piece})).json();}
       catch(e){j=null;if(off+piece.length>=total){m.textContent="LoRaDeck is restarting with the new firmware. Reload in a minute.";return;}}
-      if(j&&j.ok)break;if(j&&!j.retry){m.textContent=j.err;return;}resent++;
+      if(j&&j.ok)break;if(j&&!j.retry){m.textContent=j.err;return;}
+      if(j&&j.have>=0&&j.have!==off)break;                 // the board wants another piece: go on from there
+      resent++;
     }
+    if(j&&!j.ok&&j.have>=0&&j.have<total&&j.have!==off){off=j.have;resent++;continue;}
     if(!j||!j.ok){m.textContent="Update failed; current firmware kept.";return;}
-    off+=piece.length;last=j;m.textContent=`Sending ${Math.round(off*100/total)} %`+(resent?` (${resent} resent)`:"");
+    off=j.have>=0&&j.have>off?j.have:off+piece.length;last=j;m.textContent=`Sending ${Math.round(off*100/total)} %`+(resent?` (${resent} resent)`:"");
   }
   m.textContent=last&&last.msg?last.msg:"Installed";
 }

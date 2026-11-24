@@ -58,6 +58,10 @@ Everything is operated from the web page; the OLED shows status only.
   that); "/" in the call becomes "_" in the log file name; warning when another station sends as our call.
 - **First real two-board FT-LoRa QSO 2026-11-23**: AC9HP and club call W9AIM, Auto CQ / Auto hunt, full sequence
   and log. Second board done.
+- 0.2.2: Wi-Fi update said "pieces out of order. Start again." (most likely two uploads at once: double tap or
+  two tabs). Now: upload id (sid) per upload, the board answers with "have" (where it wants the next piece) and
+  the page resumes there; Install buttons locked while sending. Boards on older firmware still have the old
+  updater: one tap, one tab, or USB.
 - 0.2.1: FT-CW and CW over LoRa (Wayne asked; the Morserino-32 sends CW over LoRa as packets, not a keyed carrier).
 - 0.2.0 (2026-11-23, released as Beta, not yet tested on the boards): everything in "Modes" and "Clock" above, GPS, operator call,
   web flasher. Next: test it, enable GitHub Pages, first release; then the board updating itself from the internet

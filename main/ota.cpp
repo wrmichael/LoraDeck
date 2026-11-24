@@ -25,13 +25,16 @@ static struct {
     esp_ota_handle_t h = 0;
     const esp_partition_t* part = nullptr;
     size_t total = 0, written = 0;
+    uint32_t sid = 0;                                 // the upload this session belongs to (from the page)
     int64_t lastUs = 0;
     int bad = 0;
     char ver[33] = {};
 } s;
 
-static esp_err_t reply(httpd_req_t* req, bool ok, const std::string& msg, bool retry = false) {
+// have >= 0: where the board wants the next piece (the page continues from there).
+static esp_err_t reply(httpd_req_t* req, bool ok, const std::string& msg, bool retry = false, long have = -1) {
     std::string js = std::string("{\"ok\":") + (ok ? "true" : "false") + (retry ? ",\"retry\":true" : "") +
+                     (have >= 0 ? ",\"have\":" + std::to_string(have) : std::string()) +
                      (ok ? ",\"msg\":\"" : ",\"err\":\"") + msg + "\"}";
     httpd_resp_set_type(req, "application/json");
     return httpd_resp_send(req, js.data(), js.size());
@@ -54,8 +57,9 @@ static void restartTask(void*) {
 }
 
 static esp_err_t chunk(httpd_req_t* req) {
-    uint32_t off = 0, total = 0, crc = 0;
+    uint32_t off = 0, total = 0, crc = 0, sid = 0;
     if (!qnum(req, "off", off) || !qnum(req, "total", total) || !qnum(req, "crc", crc)) return reply(req, false, "bad request");
+    qnum(req, "sid", sid);                                    // older pages send none (0)
     size_t n = req->content_len;
     if (!n || n > kPiece || off + n > total) return reply(req, false, "bad piece size");
     if (s_busy.exchange(true)) return reply(req, false, "busy");
@@ -85,15 +89,17 @@ static esp_err_t chunk(httpd_req_t* req) {
         s_app->command("halt", {});
         if (esp_ota_begin(s.part, OTA_WITH_SEQUENTIAL_WRITES, &s.h) != ESP_OK) return reply(req, false, "could not start the update");
         s.active = true;
+        s.sid = sid;
         s.total = total;
         s.written = 0;
         s.bad = 0;
         ESP_LOGI(TAG, "update to %s, %u bytes, into %s", s.ver, (unsigned)total, s.part->label);
     }
     if (!s.active || total != s.total) return reply(req, false, "No update in progress. Start again.");
+    if (sid != s.sid) return reply(req, false, "Another update was started (a second tap or another browser); this one stopped.");
     s.lastUs = esp_timer_get_time();
-    if (off + n <= s.written) return reply(req, true, "already have it");
-    if (off != s.written) return reply(req, false, "pieces out of order. Start again.");
+    if (off + n <= s.written) return reply(req, true, "already have it", false, (long)s.written);
+    if (off != s.written) return reply(req, false, "continuing where the board is", true, (long)s.written);
     if (esp_ota_write(s.h, piece, n) != ESP_OK) { abortSession(); return reply(req, false, "writing failed; current firmware kept"); }
     s.written += n;
     if (s.written < s.total) return reply(req, true, "");
