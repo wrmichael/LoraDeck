@@ -1,5 +1,7 @@
 // Web control page: everything is done from here (the OLED only shows status).
 #include "board.h"
+#include "conlog.h"
+#include "sx1262.h"
 #include <cstring>
 #include <cstdlib>
 #include <map>
@@ -54,7 +56,12 @@ static esp_err_t hState(httpd_req_t* req) {
     if (a["act"] == "1") s_app->activity();                 // a visible control page = operator present
     std::string js = s_app->stateJson((uint32_t)strtoul(a["since"].c_str(), nullptr, 10), a["cfg"] == "1");
     js.pop_back();
-    js += ",\"net\":\"" + net_status() + "\"}";
+    js += ",\"net\":\"" + net_status() + "\"";
+    auto st = sx1262::stats();
+    char rs[120];
+    snprintf(rs, sizeof rs, ",\"rs\":{\"tx\":%u,\"rx\":%u,\"err\":%u,\"rssi\":%d,\"snr\":%.1f}}", (unsigned)st.tx,
+             (unsigned)st.rx, (unsigned)st.rxCrc, st.lastRssi, st.lastSnr);
+    js += rs;
     return sendJson(req, js);
 }
 static esp_err_t hCmd(httpd_req_t* req) {
@@ -74,6 +81,7 @@ static esp_err_t hCmd(httpd_req_t* req) {
     std::string c = a["c"];
     a.erase("c");
     if (c == "restart") { g_rebootReq = true; return sendJson(req, "{\"ok\":true}"); }
+    if (c == "conclear") { conlog_clear(); ESP_LOGI("web", "console log cleared"); return sendJson(req, "{\"ok\":true}"); }
     return sendJson(req, s_app->command(c, a));
 }
 static esp_err_t hLog(httpd_req_t* req) {
@@ -82,6 +90,16 @@ static esp_err_t hLog(httpd_req_t* req) {
     std::string cd = "attachment; filename=\"" + (s_app->cfg.call.empty() ? std::string("LoRaDeck") : s_app->cfg.call) + "_log.adi\"";
     std::map<std::string, std::string> a;
     parseForm(query(req), a);
+    if (a["dl"] == "1") httpd_resp_set_hdr(req, "Content-Disposition", cd.c_str());
+    return httpd_resp_send(req, t.data(), t.size());
+}
+static esp_err_t hConsole(httpd_req_t* req) {                // console log: ?tail=bytes, ?dl=1 for the whole file
+    std::map<std::string, std::string> a;
+    parseForm(query(req), a);
+    std::string t = conlog_read(a["dl"] == "1" ? 0 : (size_t)strtoul(a["tail"].empty() ? "6000" : a["tail"].c_str(), nullptr, 10));
+    httpd_resp_set_type(req, "text/plain; charset=utf-8");
+    httpd_resp_set_hdr(req, "Cache-Control", "no-store");
+    std::string cd = "attachment; filename=\"" + (s_app->cfg.call.empty() ? std::string("LoRaDeck") : s_app->cfg.call) + "_console.txt\"";
     if (a["dl"] == "1") httpd_resp_set_hdr(req, "Content-Disposition", cd.c_str());
     return httpd_resp_send(req, t.data(), t.size());
 }
@@ -108,6 +126,7 @@ void web_start(App& app) {
         {"/api/cmd", HTTP_GET, hCmd, nullptr},
         {"/api/log", HTTP_GET, hLog, nullptr},
         {"/api/settings", HTTP_GET, hSettings, nullptr},
+        {"/api/console", HTTP_GET, hConsole, nullptr},
     };
     for (auto& h : u) httpd_register_uri_handler(srv, &h);
     ota_register(srv, app);

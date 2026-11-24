@@ -59,6 +59,7 @@ h3{margin:4px 0 10px;font-size:16px}
 #about .gold{font-size:clamp(36px,10vw,96px);text-align:center;margin:20px 0 6px}
 #about .by{text-align:center;font-size:20px;margin-bottom:16px}
 /* TX light */
+#con{font:12px var(--mono);white-space:pre-wrap;word-break:break-all;max-height:60vh;overflow:auto;background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:8px;margin:10px 0 0}
 #tl{position:fixed;right:14px;bottom:14px;z-index:60;display:flex;align-items:center;gap:8px;padding:6px 12px 6px 7px;border-radius:22px;background:rgba(11,16,20,.94);border:1px solid var(--line);font:600 14px var(--mono);color:var(--txt);cursor:pointer}
 #tl i{width:20px;height:20px;border-radius:50%;background:var(--red);box-shadow:0 0 8px var(--red)}
 #tl.g i{background:var(--grn);box-shadow:0 0 10px var(--grn)}#tl.y i{background:#f2c230;box-shadow:0 0 10px #f2c230}
@@ -69,7 +70,7 @@ h3{margin:4px 0 10px;font-size:16px}
 <body>
 <div id="splash" class="hide" title="Tap to continue"><div class="gold" id="spCall">LoRaDeck</div><div class="by">LoRaDeck by AC9HP</div><div class="ver" id="spVer"></div></div>
 <header><span class="brand">LoRaDeck</span><span class="info" id="hinfo">…</span><span class="info" id="hclock"></span></header>
-<nav><button data-tab="op" class="on">Operate</button><button data-tab="log">Log</button><button data-tab="set">Settings</button><button data-tab="about">About</button></nav>
+<nav><button data-tab="op" class="on">Operate</button><button data-tab="log">Log</button><button data-tab="set">Settings</button><button data-tab="con">Console</button><button data-tab="about">About</button></nav>
 <main>
 <section id="tab-op">
   <div class="grid2">
@@ -136,6 +137,18 @@ h3{margin:4px 0 10px;font-size:16px}
     <p class="hint" id="otaMsg">Choose loradeck-x.y.z.bin. LoRaDeck stops transmitting, keeps its settings and log, and restarts when done.</p>
   </div>
 </section>
+<section id="tab-con" class="hide">
+  <div class="card">
+    <h3>Radio</h3>
+    <div class="kv"><span>Settings</span><span id="rsCfg">–</span><span>Packets sent</span><span id="rsTx">–</span><span>Packets received</span><span id="rsRx">–</span><span>Received with errors</span><span id="rsErr">–</span><span>Last received</span><span id="rsLast">–</span></div>
+    <p class="hint">Both stations need the same frequency, SF, bandwidth, coding rate and slot length. "Received with errors" going up while nothing is heard means a signal is there but does not decode (settings differ, or too strong at very short range: turn the power down or move the boards apart).</p>
+  </div>
+  <div class="card">
+    <div class="row"><h3 style="margin-right:auto">Console log</h3><button class="b" id="conRef">Refresh</button><a href="/api/console?dl=1"><button class="b">Download</button></a><button class="b" id="conClr">Clear</button></div>
+    <pre id="con"></pre>
+    <p class="hint">Everything LoRaDeck prints: packets sent and heard, clock changes, commands. Kept in the board's memory, about 256 KB at most; the oldest lines go first.</p>
+  </div>
+</section>
 <section id="tab-about" class="hide">
   <div class="card" id="about">
     <div class="gold" id="abCall">LoRaDeck</div>
@@ -167,10 +180,25 @@ function callName(){return (S.call&&S.call.length)?S.call:"LoRaDeck";}
 // ---- tabs ----
 document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
   document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("on",x===b));
-  ["op","log","set","about"].forEach(t=>$("tab-"+t).classList.toggle("hide",t!==b.dataset.tab));
+  ["op","log","set","con","about"].forEach(t=>$("tab-"+t).classList.toggle("hide",t!==b.dataset.tab));
   if(b.dataset.tab==="log")loadLog();
   if(b.dataset.tab==="set")fillSettings();
+  if(b.dataset.tab==="con")loadCon();
 });
+// ---- console log ----
+let conBusy=false;
+async function loadCon(){
+  if(conBusy)return;conBusy=true;
+  try{
+    const t=await (await fetch("/api/console?tail=8000")).text();
+    const el=$("con"),atBottom=el.scrollTop+el.clientHeight>=el.scrollHeight-20;
+    el.textContent=t;if(atBottom)el.scrollTop=el.scrollHeight;
+  }catch(e){}
+  conBusy=false;
+}
+$("conRef").onclick=loadCon;
+$("conClr").onclick=async()=>{if(confirm("Clear the console log?")){await cmd("conclear");loadCon();}};
+setInterval(()=>{if(!$("tab-con").classList.contains("hide"))loadCon();},3000);
 // ---- operate ----
 $("txen").onclick=async()=>{const r=await cmd("txen",{on:S.tx&&S.tx.en?"0":"1"});if(!r.ok)alert(r.err);poll();};
 $("halt").onclick=()=>cmd("halt").then(poll);
@@ -213,6 +241,11 @@ function render(){
   $("status").textContent=S.status||"";
   $("spCall").textContent=$("abCall").textContent=callName();
   $("spVer").textContent=$("abVer").textContent=S.ver;$("abNet").textContent=S.net||"";
+  if(S.rs){
+    $("rsCfg").textContent=`${(S.radio.freq/1e6).toFixed(3)} MHz SF${S.radio.sf} BW${S.radio.bw} CR4/${S.radio.cr} ${S.radio.pwr} dBm, ${S.slotSec} s slots`;
+    $("rsTx").textContent=S.rs.tx;$("rsRx").textContent=S.rs.rx;$("rsErr").textContent=S.rs.err;
+    $("rsLast").textContent=S.rs.rx?`${S.rs.rssi} dBm, SNR ${S.rs.snr} dB`:"nothing yet";
+  }
   trafficLight(tx);
 }
 function trafficLight(tx){

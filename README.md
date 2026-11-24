@@ -30,6 +30,15 @@ A floating light shows the transmit state: green = TX on, yellow = past half of 
 timed out; it pulses while transmitting and all of it flashes "No link" when the page loses the board. While the
 page is open and in view you count as present for the watchdog.
 
+## Console log
+
+The **Console** tab shows the radio settings in use, packets sent, received and received with errors, and the
+console log: everything LoRaDeck prints (each packet sent with its frequency and time on air, each packet heard
+with RSSI/SNR and its text, packets that are not FT-LoRa, CRC errors, clock changes, commands from the page), like
+RigDeck's console log to the card. It is kept in the board's flash in `/data/logs/` and capped at about 256 KB
+(two 128 KB files, the oldest lines go first). **Download** saves the whole log; **Clear** empties it. The OLED's
+bottom-but-one line shows the counters: `T` sent, `R` received, `E` received with errors, last RSSI.
+
 ## Radio settings
 
 Frequency (default **917.000 MHz**, in the 915–921 MHz spread-spectrum block of the ARRL 33 cm band plan, away

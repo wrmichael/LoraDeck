@@ -119,6 +119,8 @@ static void applyConfig(const LoraConfig& c) {
     writeReg(REG_SYNC, sync, 2);
     s_cfg = c;
     startRx();
+    ESP_LOGI(TAG, "radio: %.3f MHz SF%d BW%d CR4/%d %d dBm, sync 0x1424, listening", c.freqHz / 1e6, c.sf, c.bwKhz,
+             c.cr, c.powerDbm);
 }
 
 static void IRAM_ATTR dio1Isr(void*) {
@@ -137,7 +139,7 @@ static void radioTask(void*) {
         uint8_t buf[256];
         int len = 0, rssi = 0;
         float snr = 0;
-        bool got = false, sent = false;
+        bool got = false, sent = false, bad = false;
         if (irq & IRQ_TX_DONE) {
             s_sending = false;
             s_stats.tx++;
@@ -147,6 +149,7 @@ static void radioTask(void*) {
         if (irq & IRQ_RX_DONE) {
             if (irq & (IRQ_CRC_ERR | IRQ_HDR_ERR)) {
                 s_stats.rxCrc++;
+                bad = true;
             } else {
                 uint8_t st[2] = {};
                 cmd(C_GET_RX_BUF, nullptr, 0, st, 2, 1);
@@ -164,6 +167,14 @@ static void radioTask(void*) {
             }
         }
         xSemaphoreGive(s_mtx);
+        if (sent) ESP_LOGI(TAG, "TX done (#%u)", (unsigned)s_stats.tx);
+        if (bad) ESP_LOGW(TAG, "RX error: %s (a packet was there but did not decode)",
+                          (irq & IRQ_HDR_ERR) ? "header" : "CRC");
+        if (got) {
+            char hex[3 * 16 + 1] = {};
+            for (int i = 0; i < len && i < 16; i++) snprintf(hex + 3 * i, 4, "%02x ", buf[i]);
+            ESP_LOGI(TAG, "RX %d bytes, RSSI %d dBm, SNR %.1f dB: %s%s", len, rssi, snr, hex, len > 16 ? "..." : "");
+        }
         if (sent && sx1262::onSent) sx1262::onSent();
         if (got && sx1262::onReceive) sx1262::onReceive(buf, len, rssi, snr);
     }
@@ -248,7 +259,9 @@ bool sx1262::send(const uint8_t* data, int len) {
     packetParams((uint8_t)len);
     uint8_t to[3] = {0, 0, 0};                               // no timeout
     cmd(C_SET_TX, to, 3);
+    LoraConfig c = s_cfg;
     xSemaphoreGive(s_mtx);
+    ESP_LOGI(TAG, "TX %d bytes on %.3f MHz SF%d BW%d, %d ms on air", len, c.freqHz / 1e6, c.sf, c.bwKhz, airtimeMs(c, len));
     return true;
 }
 

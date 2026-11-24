@@ -101,8 +101,10 @@ void App::tick() {
         txPending_ = false;
         if (radioSend && radioSend(txBuf_, FTL_PACKET)) {
             txOn_ = true;
+            tr("TX " + std::string((txSlotStart_ / L) & 1 ? "odd" : "even") + " slot: " + txText_);
         } else {
             status("Radio not ready: nothing sent");
+            tr("TX failed, radio not ready: " + txText_);
         }
     }
 }
@@ -146,8 +148,13 @@ void App::onTxDone() {
 
 void App::onPacket(const uint8_t* data, int len, int rssi, float snr) {
     std::string text;
-    if (!ftlUnpack(data, len, text)) return;
     std::lock_guard<std::mutex> lk(mtx_);
+    if (!ftlUnpack(data, len, text)) {
+        char b[80];
+        snprintf(b, sizeof b, "heard a packet that is not FT-LoRa (%d bytes, first byte 0x%02x)", len, len > 0 ? data[0] : 0);
+        tr(b);
+        return;
+    }
     int64_t now = clk::utcMs(), L = slotLen();
     Decode d;
     d.id = nextId_++;
@@ -157,6 +164,11 @@ void App::onPacket(const uint8_t* data, int len, int rssi, float snr) {
     d.rssi = rssi;
     d.dt = (float)(now - d.slotMs) / 1000.0f;
     d.text = text;
+    {
+        char b[48];
+        snprintf(b, sizeof b, " (SNR %d, %+.2f s, %s slot)", d.snr, d.dt, d.parity ? "odd" : "even");
+        tr("heard: " + text + b);
+    }
     rxSlot_.push_back(d);
     recent_.push_back(d);
     while (recent_.size() > 100) recent_.pop_front();
@@ -239,11 +251,21 @@ std::string App::logText() {
 std::string App::command(const std::string& c, const std::map<std::string, std::string>& a) {
     std::lock_guard<std::mutex> lk(mtx_);
     if (c != "time") lastUiMono_ = clk::monoMs();
+    if (c != "time" && c != "ping") {
+        std::string line = "command: " + c;
+        for (auto& kv : a)
+            if (kv.first.find("Pass") == std::string::npos) line += " " + kv.first + "=" + kv.second;
+        tr(line);
+    }
     if (c == "ping") return ok();
     if (c == "time") {
         int64_t ms = atoll(arg(a, "ms").c_str());
         if (ms < 1735689600000LL) return err("bad time");
-        if (!clk::utcValid() || llabs(ms - clk::utcMs()) > 500) clk::setUtcMs(ms);
+        if (!clk::utcValid() || llabs(ms - clk::utcMs()) > 500) {
+            if (clk::utcValid()) tr("clock set from the browser, was " + std::to_string(clk::utcMs() - ms) + " ms off");
+            else tr("clock set from the browser");
+            clk::setUtcMs(ms);
+        }
         return ok();
     }
     if (c == "txen") {

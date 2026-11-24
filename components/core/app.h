@@ -24,6 +24,8 @@ public:
     std::function<void()> radioConfigure;
     // A contact was logged: the ADIF record (for UDP forwarding).
     std::function<void(const std::string& adifRecord)> onLogged;
+    // One line for the console log (what was sent and heard, clock changes, commands).
+    std::function<void(const std::string& line)> trace;
 
     void begin(const std::string& dataDir);
     void tick();                                              // call every ~10 ms
@@ -62,6 +64,7 @@ private:
     std::map<std::string, int> worked_;                       // calls in the log (for "worked before")
 
     void status(const std::string& s) { status_ = s; }
+    void tr(const std::string& s) { if (trace) trace(s); }
     void syncSeq();
     void startSlot(int64_t slot);
     void logQso(const QsoLog& q);

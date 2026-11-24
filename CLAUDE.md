@@ -24,7 +24,8 @@ Everything is operated from the web page; the OLED shows status only.
 - components/ft8msg: ft8_lib message.c/text.c (MIT).
 - main: sx1262 (SPI driver; pins NSS 8, SCK 9, MOSI 10, MISO 11, RST 12, BUSY 13, DIO1 14; TCXO 1.8 V on DIO3; RF
   switch on DIO2), oled (SSD1306 0x3C, SDA 17, SCL 18, RST 21, Vext GPIO 36 low), net, web, ota (/api/otachunk),
-  main (FATFS "storage" at /data, UDP ADIF forwarding).
+  main (FATFS "storage" at /data, UDP ADIF forwarding), conlog (console log tee → /data/logs/console.txt, 128 KB
+  then console.old.txt; /api/console, Console tab). App::trace hook = one log line per TX/RX/clock/command.
 - Web page: edit main/web/index.src.html, then `python3 tools/build_web.py` (inlines the font) → index.html.
 - Host tests: `sh test/build.sh` (two simulated stations complete a QSO).
 
@@ -38,6 +39,8 @@ Everything is operated from the web page; the OLED shows status only.
 ## Status
 - 0.1.0 compiled and ran on the first board (SX1262 ready, hotspot, web server). 0.1.1: hotspot name with MAC
   suffix. Default frequency changed to 917.000 MHz after that (the first board still has 915.000 saved).
+- 0.1.2: console log + radio counters (Console tab, OLED "T R E" line), added while two boards (Auto CQ / Auto
+  hunt) did not hear each other; first suspect: board 1 still on 915.000 MHz.
 - Next: second board, first real two-board QSO; then firmware update from a flasher web page, settings import/
   copy, CW ID beacon, LoRa APRS, mDNS, Heltec V4 support (FEM/PA enable pins, 16 MB flash). Full list in
   docs/ROADMAP.md.

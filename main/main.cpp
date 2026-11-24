@@ -4,6 +4,7 @@
 #include "sx1262.h"
 #include "oled.h"
 #include "clock.h"
+#include "conlog.h"
 #include <cstring>
 #include <ctime>
 #include "freertos/FreeRTOS.h"
@@ -64,7 +65,7 @@ static void oledTask(void*) {
         oled::text(0, 4, line);
         oled::text(0, 5, g.last.substr(0, 21).c_str());
         auto st = sx1262::stats();
-        snprintf(line, sizeof line, "rx %u %ddBm %.0fdB", (unsigned)st.rx, st.lastRssi, st.lastSnr);
+        snprintf(line, sizeof line, "T%u R%u E%u %ddBm", (unsigned)st.tx, (unsigned)st.rx, (unsigned)st.rxCrc, st.lastRssi);
         oled::text(0, 6, line);
         snprintf(line, sizeof line, "log %d", g.logged);
         oled::text(0, 7, line);
@@ -79,10 +80,12 @@ extern "C" void app_main(void) {
     static wl_handle_t wl;
     esp_vfs_fat_mount_config_t mc = {};
     mc.format_if_mount_failed = true;
-    mc.max_files = 4;
+    mc.max_files = 6;
     mc.allocation_unit_size = 4096;
     if (esp_vfs_fat_spiflash_mount_rw_wl("/data", "storage", &mc, &wl) != ESP_OK) ESP_LOGE(TAG, "storage did not mount");
+    else conlog_start();
     s_app.version = esp_app_get_description()->version;
+    s_app.trace = [](const std::string& line) { ESP_LOGI("app", "%s", line.c_str()); };
     s_app.begin("/data");
     ESP_LOGI(TAG, "LoRaDeck %s, call=%s", s_app.version.c_str(), s_app.cfg.call.c_str());
 
