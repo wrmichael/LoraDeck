@@ -67,6 +67,11 @@ public:
     // for the OLED
     struct Glance { bool tx = false, txEn = false; std::string call, dx, last, statusText; int heard = 0, logged = 0; };
     Glance glance();
+    // for the Cardputer's own Terminal screen: Terminal messages heard and sent (oldest first, at most `max`),
+    // how many of ours wait for a slot, and the last station heard signing "DE <call>"
+    std::vector<Decode> terminalLines(size_t max);
+    int terminalWaiting() const;
+    std::string lastCaller() const { std::lock_guard<std::mutex> lk(mtx_); return lastDe_; }
 
 private:
     enum { TX_FT = 0, TX_RELAY = 1, TX_CHAT = 2, TX_CW = 3, TX_CWID = 4, TX_LCW = 5 };

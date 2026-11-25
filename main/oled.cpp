@@ -15,7 +15,9 @@ static bool s_ok = false;
 
 #if defined(LORADECK_CARDPUTER)
 #include "driver/spi_master.h"
+#include "freertos/semphr.h"
 static spi_device_handle_t s_tft;
+static SemaphoreHandle_t s_mx;                               // the status task and the keyboard screens share the LCD
 static const uint16_t FG = 0xA0FD, BG = 0x0000;              // amber on black, RGB565 sent high byte first
 
 static void tftSend(const void* d, int n, bool data) {
@@ -52,6 +54,7 @@ bool oled::begin() {
     bus.quadwp_io_num = -1;
     bus.quadhd_io_num = -1;
     bus.max_transfer_sz = 240 * 2 + 16;
+    s_mx = xSemaphoreCreateMutex();
     if (spi_bus_initialize(SPI3_HOST, &bus, SPI_DMA_CH_AUTO) != ESP_OK) return false;
     spi_device_interface_config_t dev = {};
     dev.clock_speed_hz = 40000000;
@@ -86,6 +89,7 @@ bool oled::begin() {
 
 void oled::show() {
     if (!s_ok) return;
+    xSemaphoreTake(s_mx, portMAX_DELAY);
     static uint16_t line[240];
     tftWindow(0, 7, 239, 126);                               // 240 x 120, centred in the 135 rows
     for (int y = 0; y < 120; y++) {
@@ -95,6 +99,19 @@ void oled::show() {
         for (int x = 0; x < 240; x++) line[x] = (page[x * 128 / 240] & bit) ? FG : BG;
         tftSend(line, sizeof line, true);
     }
+    xSemaphoreGive(s_mx);
+}
+
+void oled::frame(void (*fill)(int y, uint16_t* line, void* ctx), void* ctx) {
+    if (!s_ok) return;
+    xSemaphoreTake(s_mx, portMAX_DELAY);
+    static uint16_t line[240];
+    tftWindow(0, 0, 239, 134);
+    for (int y = 0; y < 135; y++) {
+        fill(y, line, ctx);
+        tftSend(line, sizeof line, true);
+    }
+    xSemaphoreGive(s_mx);
 }
 
 void oled::power(bool on) {
@@ -186,6 +203,8 @@ void oled::show() {
         i2c_master_transmit(s_dev, b, sizeof b, 100);
     }
 }
+
+void oled::frame(void (*)(int, uint16_t*, void*), void*) {}
 
 void oled::power(bool on) {
     static const uint8_t onc[] = {0xAF}, offc[] = {0xAE};

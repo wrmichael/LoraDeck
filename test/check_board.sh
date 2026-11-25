@@ -10,7 +10,7 @@ F="-std=$STD -fsyntax-only -Wall -Wextra -Werror -Wno-unused-parameter -Wno-sign
 rc=0
 for board in heltec_v3 cardputer_adv; do
     D=""; [ $board = cardputer_adv ] && D="-DLORADECK_CARDPUTER=1"
-    for f in main/main.cpp main/sx1262.cpp main/conlog.cpp main/gps.cpp main/oled.cpp main/board_hw.cpp components/core/settings.cpp; do
+    for f in main/main.cpp main/sx1262.cpp main/conlog.cpp main/gps.cpp main/oled.cpp main/board_hw.cpp main/cardui.cpp main/net.cpp components/core/settings.cpp; do
         if g++ $F $D "$f"; then echo "ok   $board $f"; else echo "FAIL $board $f"; rc=1; fi
     done
 done

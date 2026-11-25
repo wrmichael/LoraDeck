@@ -13,7 +13,14 @@ Commits: `git -c user.name="Wayne Michael" -c user.email="wrmichael@users.norepl
   oled.cpp draws the same 128x64 status picture scaled to 240x120 (untested on the panel: orientation/offset
   may need a tweak). Cardputer defaults: GPS RX 15 TX 13 115200. OTA refuses another board's project name and
   refuses when not running from LoRaDeck's table (no "storage" FAT or running partition not ota_0/ota_1 = M5Launcher
-  from SD); storage = "storage" or the first FAT data partition. Keyboard (TCA8418 @ I2C 8/9, INT 11) not used yet.
+  from SD); storage = "storage" or the first FAT data partition.
+- 0.3.1 Cardputer keyboard (main/cardui.cpp): TCA8418 @0x34 on the board's I2C bus (board_i2c_bus()), polled every
+  15 ms; regs 0x1D=0x7F 0x1E=0xFF 0x1F=0 0x01=1; key n-1 -> trow=/10, tcol=%10 -> row tcol%4, col trow*2+(tcol>=4)
+  (from the cardputer-adv-keyboard Rust crate; untested on hardware). ` = Esc, Fn+;./, = arrows. Screens: a
+  26x11 grid of the 6x8 font at 9x12 px drawn with oled::frame() (mutex shared with the status task, which
+  stops drawing while cardui_owns_screen()); menu, Terminal (App::terminalLines/terminalWaiting/lastCaller,
+  app.command chat/lcw/cw), Wi-Fi (net_scan, net_join, net_hotspot apply live; STA netif always created),
+  keys. Battery: G10 ADC1 ch9 x2 (board_battery_mv/pct), on the status line 3 and the menu bar.
 - Release builds both; flasher docs/ (Heltec) + docs/cardputer/ (+ loradeck-cardputer-app.bin for the SD card).
   tools\flash_cardputer.bat = USB build+flash. test/check_board.sh checks both boards.
 
@@ -54,7 +61,7 @@ Everything is operated from the web page; the OLED shows status only.
 - Web flasher: docs/ (GitHub Pages, ESP Web Tools; Beta docs/manifest.json, Stable docs/stable/), built by
   tools\release.bat on Wayne's PC. Board page: Install latest Stable/Beta from wrmichael.github.io/LoraDeck.
 - No ESP-IDF in the cloud session: board code is only stub-syntax-checked there; Wayne's build is the real test.
-  Run `sh test/check_board.sh` after changing main/*.cpp: compiles main, sx1262, conlog, gps against
+  Run `sh test/check_board.sh` after changing main/*.cpp: compiles main, sx1262, conlog, gps, oled, board_hw, cardui, net against
   test/idf_stubs with -Werror and the newest C++ (the real build is -Werror, gnu++26: e.g. ++ on a volatile and
   snprintf truncation are errors there; 0.2.10's first release failed on both).
 
@@ -77,6 +84,8 @@ Everything is operated from the web page; the OLED shows status only.
   and log. Second board done.
 - 2026-11-23 evening: 0.2.x running on both boards, "things seem to be working better". Wayne is recruiting more
   users for a wider test of this version. When reports come in: ask for the Console log download from each board.
+- 0.3.1 (2026-11-24): Cardputer keyboard: menu, Terminal, Wi-Fi (scan/join/forget/hotspot, live), battery %. 0.3.0
+  ran on the Cardputer (screen right way up, GPS clock, hotspot); radio QSO not yet tried. Not yet built.
 - 0.3.0 (2026-11-24): Cardputer-Adv + Cap LoRa-1262 support (see Boards); flasher device choice; SD (M5Launcher)
   program .bin. Wayne has the kit and an SD card in it. Not yet built/run on the hardware.
 - 0.2.12: the storage list from that board: /data/logs full of 0xFF-named "directories", settings.txt 0 bytes,

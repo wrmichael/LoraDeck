@@ -162,8 +162,18 @@ board unlicensed under Part 15 within its limits. This is a summary, not legal a
 - **Heltec WiFi LoRa 32 V3** (the original): status on its 0.96" OLED.
 - **M5Stack Cardputer-Adv + Cap LoRa-1262** (from 0.3.0): the same LoRaDeck, operated from the same web page;
   the status screen on its 240x135 LCD. The cap's GPS is set up by default (pins 15/13, 115200 baud), so the
-  clock and the grid come from GPS. The keyboard is not used yet (next on the roadmap). Plug the cap in, with
-  its antenna on, before switching on; if the cap is missing the screen says "Cap LoRa not found!".
+  clock and the grid come from GPS. Plug the cap in, with its antenna on, before switching on; if the cap is
+  missing the screen says "Cap LoRa not found!". The status screen shows the battery (%) after the address.
+
+**Cardputer keyboard (from 0.3.1):** on the status screen press **Enter** for the menu (or **T** Terminal,
+**W** Wi-Fi, **?** keys). **`** (the Esc key) goes back. Fn+; and Fn+. are up and down.
+- **Terminal:** type and press Enter: the same chat as the web page's Terminal ("<to> DE <me>" added).
+  **Tab** switches LoRa text / CW over LoRa (CoL) / keyed CW; **Alt** edits the To call (filled in with the
+  last station heard); **Fn+1..6** sends the CW macros; Fn+Del clears the line; Fn+; / Fn+. scroll back.
+  Lines: `<` heard, `>` sent, `<*` repeated by other stations on the way. The callsign must be set first.
+- **Wi-Fi:** shows the hotspot (name, password, address) and the home network. **S** scans and joins a
+  network (Enter, then its password), **N** joins one by typing its name, **F** forgets it, **H** changes the
+  hotspot's name and password. These take effect at once, no restart.
 
 Each board has its own firmware; the web page refuses to install the other board's.
 

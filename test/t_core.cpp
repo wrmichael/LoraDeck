@@ -138,6 +138,14 @@ static void meshTests() {
     for (int i = 0; i < 4000 && n[2].app.stateJson(0, false).find("\"lastDe\":\"KC9AAA\"") == std::string::npos; i++) step();
     CHECK(n[2].app.stateJson(0, false).find("\"lastDe\":\"KC9AAA\"") != std::string::npos);
     CHECK(n[2].app.stateJson(0, false).find("GM es tnx KC9BBB DE KC9AAA") != std::string::npos);
+    {   // the Cardputer's Terminal screen: heard by B, sent by A, nothing waiting any more
+        std::vector<Decode> tb = n[2].app.terminalLines(20), ta = n[0].app.terminalLines(20);
+        CHECK(!tb.empty() && tb.back().text == "GM es tnx KC9BBB DE KC9AAA" && tb.back().snr != 99);
+        CHECK(!ta.empty() && ta.back().snr == 99 && ta.back().kind == 1);
+        CHECK(n[2].app.lastCaller() == "KC9AAA" && n[0].app.terminalWaiting() == 0);
+        n[0].app.command("chat", {{"text", "one more"}});
+        CHECK(n[0].app.terminalWaiting() == 1);
+    }
     // macros and CW
     r = n[2].app.command("cw", {{"text", "{TO} DE {MY} R TU 73 SK"}, {"to", "KC9AAA"}});
     CHECK(r.find("KC9AAA DE KC9BBB R TU 73 SK") != std::string::npos);

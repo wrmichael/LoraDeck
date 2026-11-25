@@ -1047,6 +1047,21 @@ void App::gpsGrid(const std::string& grid6) {
     syncSeq();
 }
 
+std::vector<Decode> App::terminalLines(size_t max) {
+    std::lock_guard<std::mutex> lk(mtx_);
+    std::vector<Decode> v;
+    for (auto it = recent_.rbegin(); it != recent_.rend() && v.size() < max; ++it)
+        if (it->kind == 1 || it->kind == 4 || (it->kind == 2 && it->snr == 99)) v.push_back(*it);
+    return std::vector<Decode>(v.rbegin(), v.rend());
+}
+
+int App::terminalWaiting() const {
+    std::lock_guard<std::mutex> lk(mtx_);
+    int n = (int)(chatOut_.size() + lcwOut_.size() + cwOut_.size());
+    for (const TxItem& it : txq_) if (termKind(it.kind) >= 0) n++;
+    return n;
+}
+
 App::Glance App::glance() {
     std::lock_guard<std::mutex> lk(mtx_);
     Glance g;

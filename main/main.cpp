@@ -5,6 +5,7 @@
 #include "oled.h"
 #include "clock.h"
 #include "conlog.h"
+#include "cardui.h"
 #include <dirent.h>
 #include <sys/stat.h>
 #include <string>
@@ -129,6 +130,7 @@ static void oledTask(void*) {
     prg.pull_up_en = GPIO_PULLUP_ENABLE;
     gpio_config(&prg);
     for (;;) {
+        if (cardui_owns_screen()) { prgHeld = 0; vTaskDelay(pdMS_TO_TICKS(200)); continue; }   // Cardputer menu
         if (gpio_get_level(GPIO_NUM_0) == 0) {
             prgHeld++;
             if (prgHeld >= 20) { s_resetReq = 1; vTaskDelay(portMAX_DELAY); }
@@ -157,13 +159,18 @@ static void oledTask(void*) {
         oled::text(0, 2, line, g.tx);
         std::string ip = net_ip();
         oled::text(0, 3, ip.empty() ? net_ssid().c_str() : ip.c_str());
+        int bat = board_battery_pct();
+        if (bat >= 0) {                                   // battery, right-aligned on the address line
+            snprintf(line, sizeof line, " %3d%%", bat);
+            oled::text(16, 3, line);
+        }
         snprintf(line, sizeof line, "QSO: %s", g.dx.empty() ? "-" : g.dx.c_str());
         oled::text(0, 4, line);
         oled::text(0, 5, g.last.substr(0, 21).c_str());
         auto st = sx1262::stats();
         snprintf(line, sizeof line, "T%u R%u E%u %ddBm", (unsigned)st.tx, (unsigned)st.rx, (unsigned)st.rxCrc, st.lastRssi);
         oled::text(0, 6, line);
-        snprintf(line, sizeof line, "log %d", g.logged);
+        snprintf(line, sizeof line, cardui_has_keyboard() ? "log %-4d  Enter=menu" : "log %d", g.logged);
         oled::text(0, 7, line);
         oled::show();
         vTaskDelay(pdMS_TO_TICKS(500));
@@ -228,6 +235,7 @@ extern "C" void app_main(void) {
     ota_start();
     vTaskDelay(pdMS_TO_TICKS(2500));                      // the start-up screen for a moment
     xTaskCreate(oledTask, "oled", 4096, nullptr, 2, nullptr);
+    cardui_start(s_app);                                  // Cardputer: keyboard, Terminal and Wi-Fi screens
     for (;;) {
         s_app.tick();
         if (g_rebootReq) { vTaskDelay(pdMS_TO_TICKS(500)); esp_restart(); }
