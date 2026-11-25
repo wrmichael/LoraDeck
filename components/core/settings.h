@@ -55,8 +55,13 @@ struct Settings {
     std::string logHost;                 // UDP ADIF forwarding (e.g. Log4OM), empty = off
     int logPort = 2237;
     // GPS module (optional, NMEA on a UART): time, and the grid if gpsGrid
+#if defined(LORADECK_CARDPUTER)
+    int gpsRx = 15, gpsTx = 13;          // the Cap LoRa-1262's GNSS (AT6668), 115200 baud
+    int gpsBaud = 115200;
+#else
     int gpsRx = -1, gpsTx = -1;          // board pins: RX = the module's TXD, TX = the module's RXD; -1 = no GPS
     int gpsBaud = 9600;
+#endif
     int gpsPps = -1;                     // pulse-per-second pin for exact time; -1 = none
     bool gpsGrid = true;                 // take the grid locator from the GPS position
 

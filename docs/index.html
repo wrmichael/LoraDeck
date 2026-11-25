@@ -38,10 +38,13 @@ esp-web-install-button:not(:defined) [slot=unsupported],esp-web-install-button:n
 <body>
 <main>
   <h1>LoRaDeck</h1>
-  <p class="tag">Automatic, logged FT-LoRa and FT-MESH contacts, chat and CW on 33 cm. By AC9HP.</p>
+  <p class="tag">Automatic, logged FT-LoRa, FT-MESH and FT-CW contacts, chat and CW on 33 cm. By AC9HP.</p>
 
   <div class="card">
-    <div class="ver">Heltec WiFi LoRa 32 V3 (863-928 MHz)</div>
+    <div class="chan" role="radiogroup" aria-label="Device">
+      <label><input type="radio" name="dev" value="heltec" checked> <b>Heltec WiFi LoRa 32 V3</b> <small>863-928 MHz</small></label>
+      <label><input type="radio" name="dev" value="cardputer"> <b>M5Stack Cardputer-Adv + Cap LoRa-1262</b> <small>868-923 MHz</small></label>
+    </div>
     <div class="chan" role="radiogroup" aria-label="Firmware channel">
       <label><input type="radio" name="ch" value="stable"> <b>Stable</b> <span id="vStable">…</span> <small>tested, recommended</small></label>
       <label><input type="radio" name="ch" value="beta" checked> <b>Beta</b> <span id="vBeta">…</span> <small>newest features, may have bugs</small></label>
@@ -61,6 +64,8 @@ esp-web-install-button:not(:defined) [slot=unsupported],esp-web-install-button:n
       <a class="btn alt" id="dl" href="firmware/loradeck.bin" download>Download .bin</a>
     </div>
     <div class="warn">Download your log from the LoRaDeck web page (Log tab) before installing, just in case. Ticking "Erase device" deletes the log and settings.</div>
+    <div id="cpNote" class="warn" style="display:none"><b>Cardputer:</b> plug the Cap LoRa-1262 in with its antenna on before switching on. If the browser does not find the Cardputer, switch it off, hold the <b>G0</b> button on its side while plugging in the USB cable, and press Install again. After installing, press the reset button (or switch it off and on).
+      <br><br><b>From the SD card (M5Launcher):</b> <a id="appDl" href="cardputer/stable/loradeck-cardputer-app.bin" download>download the program .bin for the SD card</a>, copy it onto the card, and install it with M5Launcher. Started that way LoRaDeck keeps its settings and log in Launcher's storage, and updates go the same way (a new .bin on the card), not over Wi-Fi.</div>
   </div>
 
   <h2>Updating over Wi-Fi</h2>
@@ -78,27 +83,45 @@ esp-web-install-button:not(:defined) [slot=unsupported],esp-web-install-button:n
   <footer>LoRaDeck by AC9HP. Flashing uses <a href="https://esphome.github.io/esp-web-tools/">ESP Web Tools</a>; nothing is installed on your computer.</footer>
 </main>
 <script>
-const CH = {stable: {m: "stable/manifest.json", bin: "stable/loradeck.bin", el: "vStable"},
-            beta:   {m: "manifest.json",        bin: "firmware/loradeck.bin", el: "vBeta"}};
+// Each device has its own firmware: Heltec V3 at the top level, the Cardputer under cardputer/.
+const DEV = {heltec: {dir: "", name: "loradeck"}, cardputer: {dir: "cardputer/", name: "loradeck-cardputer"}};
+function paths(dev, ch) {
+  const d = DEV[dev], base = d.dir + (ch === "stable" ? "stable/" : "");
+  return {m: base + "manifest.json", bin: base + (ch === "stable" ? "" : "firmware/") + d.name + ".bin",
+          app: base + (ch === "stable" ? "" : "firmware/") + d.name + "-app.bin"};
+}
 const ver = {};
 // Stable is the default once there is one; until then (or if it cannot be read) the page stays on Beta.
-for (const k in CH) fetch(CH[k].m, {cache: "no-store"}).then(r => { if (!r.ok) throw 0; return r.json(); }).then(m => {
-  ver[k] = m.version; document.getElementById(CH[k].el).textContent = m.version;
-  if (k === "stable") document.querySelector("input[value=stable]").checked = true;
+function loadVersions() {
+  const dev = document.querySelector("input[name=dev]:checked").value;
+  for (const ch of ["stable", "beta"]) {
+    const el = document.getElementById(ch === "stable" ? "vStable" : "vBeta"), r = document.querySelector("input[value=" + ch + "]");
+    el.textContent = "…"; r.disabled = false;
+    fetch(paths(dev, ch).m, {cache: "no-store"}).then(x => { if (!x.ok) throw 0; return x.json(); }).then(m => {
+      ver[dev + ch] = m.version; el.textContent = m.version;
+      if (ch === "stable") r.checked = true;
+      pick();
+    }).catch(() => {
+      el.textContent = "(not released yet)"; r.disabled = true;
+      if (r.checked) { r.checked = false; const o = document.querySelector("input[name=ch]:not(:disabled)"); if (o) o.checked = true; }
+      pick();
+    });
+  }
   pick();
-}).catch(() => {
-  document.getElementById(CH[k].el).textContent = "(not released yet)";
-  const r = document.querySelector("input[value=" + k + "]");
-  r.disabled = true;
-  if (r.checked) { r.checked = false; const o = document.querySelector("input[name=ch]:not(:disabled)"); if (o) o.checked = true; pick(); }
-});
+}
 function pick() {
-  const k = document.querySelector("input[name=ch]:checked").value;
-  document.getElementById("inst").setAttribute("manifest", CH[k].m);
-  const dl = document.getElementById("dl");
-  dl.href = CH[k].bin; dl.setAttribute("download", "loradeck-" + (ver[k] || k) + ".bin");
+  const dev = document.querySelector("input[name=dev]:checked").value;
+  const chk = document.querySelector("input[name=ch]:checked"), ch = chk ? chk.value : "beta", p = paths(dev, ch);
+  document.getElementById("inst").setAttribute("manifest", p.m);
+  const dl = document.getElementById("dl"), v = ver[dev + ch] || ch;
+  dl.href = p.bin; dl.setAttribute("download", DEV[dev].name + "-" + v + ".bin");
+  const app = document.getElementById("appDl");
+  app.href = p.app; app.setAttribute("download", DEV[dev].name + "-app-" + v + ".bin");
+  document.getElementById("cpNote").style.display = dev === "cardputer" ? "" : "none";
 }
 document.querySelectorAll("input[name=ch]").forEach(e => e.onchange = pick);
+document.querySelectorAll("input[name=dev]").forEach(e => e.onchange = loadVersions);
+loadVersions();
 </script>
 </body>
 </html>

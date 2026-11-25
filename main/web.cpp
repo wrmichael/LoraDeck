@@ -64,7 +64,7 @@ static esp_err_t hState(httpd_req_t* req) {
     if (a["act"] == "1") s_app->activity();                 // a visible control page = operator present
     std::string js = s_app->stateJson((uint32_t)strtoul(a["since"].c_str(), nullptr, 10), a["cfg"] == "1");
     js.pop_back();
-    js += ",\"net\":\"" + net_status() + "\",\"gps\":\"" + gps_status() + "\"";
+    js += ",\"net\":\"" + net_status() + "\",\"gps\":\"" + gps_status() + "\",\"board\":\"" + board_id() + "\"";
     uint64_t fsTotal = 0, fsFree = 0;
     esp_vfs_fat_info("/data", &fsTotal, &fsFree);
     char fs[64];

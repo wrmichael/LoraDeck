@@ -6,11 +6,104 @@
 #include "driver/gpio.h"
 #include "esp_log.h"
 #include "font6x8.h"
+#include "board_pins.h"
 
-static const gpio_num_t P_SDA = GPIO_NUM_17, P_SCL = GPIO_NUM_18, P_RST = GPIO_NUM_21, P_VEXT = GPIO_NUM_36;
-static i2c_master_dev_handle_t s_dev;
+// The status screen is a 128x64 one-bit picture (8 pages of 128 columns, as the SSD1306 stores it). The Heltec
+// shows it on its OLED; the Cardputer scales it to 240x120 on its 240x135 colour LCD (ST7789).
 static uint8_t s_fb[8][128];
 static bool s_ok = false;
+
+#if defined(LORADECK_CARDPUTER)
+#include "driver/spi_master.h"
+static spi_device_handle_t s_tft;
+static const uint16_t FG = 0xA0FD, BG = 0x0000;              // amber on black, RGB565 sent high byte first
+
+static void tftSend(const void* d, int n, bool data) {
+    if (n <= 0) return;
+    gpio_set_level(LD_TFT_DC, data ? 1 : 0);
+    spi_transaction_t t = {};
+    t.length = (size_t)n * 8;
+    t.tx_buffer = d;
+    spi_device_polling_transmit(s_tft, &t);
+}
+static void tftCmd(uint8_t c, const uint8_t* d = nullptr, int n = 0) {
+    tftSend(&c, 1, false);
+    if (n) tftSend(d, n, true);
+}
+// landscape, the panel's visible 240x135 window starts at column 40, row 53 of its 320x240 memory
+static void tftWindow(int x0, int y0, int x1, int y1) {
+    x0 += 40; x1 += 40; y0 += 53; y1 += 53;
+    uint8_t ca[] = {(uint8_t)(x0 >> 8), (uint8_t)x0, (uint8_t)(x1 >> 8), (uint8_t)x1};
+    uint8_t ra[] = {(uint8_t)(y0 >> 8), (uint8_t)y0, (uint8_t)(y1 >> 8), (uint8_t)y1};
+    tftCmd(0x2A, ca, 4);
+    tftCmd(0x2B, ra, 4);
+    tftCmd(0x2C);
+}
+
+bool oled::begin() {
+    gpio_config_t o = {};
+    o.pin_bit_mask = (1ULL << LD_TFT_DC) | (1ULL << LD_TFT_RST) | (1ULL << LD_TFT_BL);
+    o.mode = GPIO_MODE_OUTPUT;
+    gpio_config(&o);
+    spi_bus_config_t bus = {};
+    bus.mosi_io_num = LD_TFT_MOSI;
+    bus.miso_io_num = -1;
+    bus.sclk_io_num = LD_TFT_SCK;
+    bus.quadwp_io_num = -1;
+    bus.quadhd_io_num = -1;
+    bus.max_transfer_sz = 240 * 2 + 16;
+    if (spi_bus_initialize(SPI3_HOST, &bus, SPI_DMA_CH_AUTO) != ESP_OK) return false;
+    spi_device_interface_config_t dev = {};
+    dev.clock_speed_hz = 40000000;
+    dev.mode = 0;
+    dev.spics_io_num = LD_TFT_CS;
+    dev.queue_size = 1;
+    if (spi_bus_add_device(SPI3_HOST, &dev, &s_tft) != ESP_OK) return false;
+    gpio_set_level(LD_TFT_RST, 0);
+    vTaskDelay(pdMS_TO_TICKS(20));
+    gpio_set_level(LD_TFT_RST, 1);
+    vTaskDelay(pdMS_TO_TICKS(120));
+    tftCmd(0x01);                                            // software reset
+    vTaskDelay(pdMS_TO_TICKS(150));
+    tftCmd(0x11);                                            // sleep out
+    vTaskDelay(pdMS_TO_TICKS(120));
+    static const uint8_t colmod = 0x55, madctl = 0x60;      // 16-bit colour; landscape (MV | MX)
+    tftCmd(0x3A, &colmod, 1);
+    tftCmd(0x36, &madctl, 1);
+    tftCmd(0x21);                                            // colours inverted on this panel
+    tftCmd(0x13);
+    tftCmd(0x29);                                            // display on
+    static uint16_t line[240];
+    for (int i = 0; i < 240; i++) line[i] = BG;
+    tftWindow(0, 0, 239, 134);
+    for (int y = 0; y < 135; y++) tftSend(line, sizeof line, true);
+    gpio_set_level(LD_TFT_BL, 1);                            // backlight on
+    s_ok = true;
+    clear();
+    show();
+    return true;
+}
+
+void oled::show() {
+    if (!s_ok) return;
+    static uint16_t line[240];
+    tftWindow(0, 7, 239, 126);                               // 240 x 120, centred in the 135 rows
+    for (int y = 0; y < 120; y++) {
+        int sy = y * 64 / 120;
+        const uint8_t* page = s_fb[sy >> 3];
+        uint8_t bit = (uint8_t)(1u << (sy & 7));
+        for (int x = 0; x < 240; x++) line[x] = (page[x * 128 / 240] & bit) ? FG : BG;
+        tftSend(line, sizeof line, true);
+    }
+}
+
+void oled::power(bool on) {
+    if (s_ok) gpio_set_level(LD_TFT_BL, on ? 1 : 0);
+}
+
+#else
+static const gpio_num_t P_SDA = GPIO_NUM_17, P_SCL = GPIO_NUM_18, P_RST = GPIO_NUM_21, P_VEXT = GPIO_NUM_36;
+static i2c_master_dev_handle_t s_dev;
 
 static bool cmds(const uint8_t* c, int n) {
     uint8_t b[32];
@@ -52,6 +145,8 @@ bool oled::begin() {
     return s_ok;
 }
 
+#endif
+
 void oled::clear() { memset(s_fb, 0, sizeof s_fb); }
 
 void oled::text(int col, int row, const char* s, bool invert) {
@@ -79,6 +174,7 @@ void oled::bigText(int col, int row, const char* s) {
     }
 }
 
+#if !defined(LORADECK_CARDPUTER)
 void oled::show() {
     if (!s_ok) return;
     static const uint8_t win[] = {0x21, 0, 127, 0x22, 0, 7};
@@ -95,3 +191,4 @@ void oled::power(bool on) {
     static const uint8_t onc[] = {0xAF}, offc[] = {0xAE};
     if (s_ok) cmds(on ? onc : offc, 1);
 }
+#endif

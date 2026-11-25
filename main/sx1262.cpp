@@ -1,4 +1,5 @@
 #include "sx1262.h"
+#include "board_pins.h"
 #include <cstring>
 #include <cmath>
 #include <algorithm>
@@ -16,8 +17,8 @@
 static const char* TAG = "sx1262";
 
 // Heltec WiFi LoRa 32 V3 wiring
-static const gpio_num_t P_NSS = GPIO_NUM_8, P_SCK = GPIO_NUM_9, P_MOSI = GPIO_NUM_10, P_MISO = GPIO_NUM_11,
-                        P_RST = GPIO_NUM_12, P_BUSY = GPIO_NUM_13, P_DIO1 = GPIO_NUM_14;
+static const gpio_num_t P_NSS = LD_LORA_NSS, P_SCK = LD_LORA_SCK, P_MOSI = LD_LORA_MOSI, P_MISO = LD_LORA_MISO,
+                        P_RST = LD_LORA_RST, P_BUSY = LD_LORA_BUSY, P_DIO1 = LD_LORA_DIO1;   // board_pins.h
 
 // commands (SX126x datasheet, section 13)
 enum : uint8_t {

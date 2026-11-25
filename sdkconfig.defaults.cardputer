@@ -1,0 +1,2 @@
+# Cardputer-Adv: the USB-C port is the ESP32-S3's own USB (Serial/JTAG), not a USB-UART chip.
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y

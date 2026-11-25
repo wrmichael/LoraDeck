@@ -1,7 +1,7 @@
 #pragma once
 #include "driver/uart.h"
 #include <cstddef>
-typedef void* spi_device_handle_t; enum { SPI2_HOST, SPI_DMA_CH_AUTO };
+typedef void* spi_device_handle_t; enum { SPI2_HOST = 1, SPI3_HOST = 2, SPI_DMA_CH_AUTO = 3 };
 struct spi_bus_config_t { int mosi_io_num, miso_io_num, sclk_io_num, quadwp_io_num, quadhd_io_num, max_transfer_sz; };
 struct spi_device_interface_config_t { int clock_speed_hz, mode, spics_io_num, queue_size; };
 struct spi_transaction_t { size_t length; const void* tx_buffer; void* rx_buffer; };

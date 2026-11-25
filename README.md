@@ -157,10 +157,25 @@ a secondary allocation (do not interfere with primary users) and is restricted i
 (§97.303). Auto CQ / Auto hunt run with you at the web page as control operator, with the TX watchdog. Or use the
 board unlicensed under Part 15 within its limits. This is a summary, not legal advice — check the current rules.
 
+## Boards
+
+- **Heltec WiFi LoRa 32 V3** (the original): status on its 0.96" OLED.
+- **M5Stack Cardputer-Adv + Cap LoRa-1262** (from 0.3.0): the same LoRaDeck, operated from the same web page;
+  the status screen on its 240x135 LCD. The cap's GPS is set up by default (pins 15/13, 115200 baud), so the
+  clock and the grid come from GPS. The keyboard is not used yet (next on the roadmap). Plug the cap in, with
+  its antenna on, before switching on; if the cap is missing the screen says "Cap LoRa not found!".
+
+Each board has its own firmware; the web page refuses to install the other board's.
+
+**Cardputer from the SD card (M5Launcher):** on the flasher page choose the Cardputer and download the
+**program .bin for the SD card**, copy it onto the card and install it with M5Launcher. Started that way,
+LoRaDeck keeps its settings and log in Launcher's storage partition, and Wi-Fi updates are switched off (they
+could overwrite Launcher): update with a new .bin on the card.
+
 ## Installing and updating
 
 **Browser flasher:** open **https://wrmichael.github.io/LoraDeck/** in Chrome or Edge, connect the board by USB,
-pick Stable or Beta and press **Install LoRaDeck** (leave "Erase device" unticked to keep the log and
+pick the **device** and Stable or Beta and press **Install LoRaDeck** (leave "Erase device" unticked to keep the log and
 settings). **Over Wi-Fi:** Settings → Update LoRaDeck → **Install latest Stable / Beta** (the browser needs
 internet), or **Install this file** with a downloaded .bin.
 

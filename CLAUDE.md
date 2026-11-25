@@ -3,6 +3,20 @@
 Sister project of RigDeck (github.com/wrmichael/RigDeck), kept separate. Owner: Wayne Michael, AC9HP.
 Commits: `git -c user.name="Wayne Michael" -c user.email="wrmichael@users.noreply.github.com" commit`.
 
+## Boards (0.3.0)
+- CMake `-DLORADECK_BOARD=heltec_v3` (default, project "loradeck", build/, sdkconfig) or `cardputer_adv`
+  (project "loradeck-cardputer", build-cardputer/, sdkconfig.cardputer, + sdkconfig.defaults.cardputer = USB
+  Serial/JTAG console; define LORADECK_CARDPUTER for all components). Pins in main/board_pins.h; board_hw.cpp
+  board_init(): Cardputer I2C 8/9 + PI4IOE5V6408 @0x43 regs 0x03=1, 0x07=0, 0x05=1 (antenna switch P0, from
+  Meshtastic's variant). SX1262 on the cap: NSS 5 SCK 40 MOSI 14 MISO 39 RST 3 BUSY 6 DIO1 4, TCXO 1.8 V, DIO2 RF
+  switch. ST7789 240x135 on SPI3 (MOSI 35 SCK 36 CS 37 DC 34 RST 33 BL 38), MADCTL 0x60, offsets 40/53, INVON;
+  oled.cpp draws the same 128x64 status picture scaled to 240x120 (untested on the panel: orientation/offset
+  may need a tweak). Cardputer defaults: GPS RX 15 TX 13 115200. OTA refuses another board's project name and
+  refuses when not running from LoRaDeck's table (no "storage" FAT or running partition not ota_0/ota_1 = M5Launcher
+  from SD); storage = "storage" or the first FAT data partition. Keyboard (TCA8418 @ I2C 8/9, INT 11) not used yet.
+- Release builds both; flasher docs/ (Heltec) + docs/cardputer/ (+ loradeck-cardputer-app.bin for the SD card).
+  tools\flash_cardputer.bat = USB build+flash. test/check_board.sh checks both boards.
+
 ## What it is
 Firmware for the **Heltec WiFi LoRa 32 V3** (ESP32-S3, 8 MB flash, no PSRAM, SX1262, 0.96" OLED, Wi-Fi):
 automatic, logged QSOs in the **FT-LoRa** mode (FT8 77-bit messages in 11-byte LoRa packets, docs/FT-LoRa.md).
@@ -63,6 +77,8 @@ Everything is operated from the web page; the OLED shows status only.
   and log. Second board done.
 - 2026-11-23 evening: 0.2.x running on both boards, "things seem to be working better". Wayne is recruiting more
   users for a wider test of this version. When reports come in: ask for the Console log download from each board.
+- 0.3.0 (2026-11-24): Cardputer-Adv + Cap LoRa-1262 support (see Boards); flasher device choice; SD (M5Launcher)
+  program .bin. Wayne has the kit and an SD card in it. Not yet built/run on the hardware.
 - 0.2.12: the storage list from that board: /data/logs full of 0xFF-named "directories", settings.txt 0 bytes,
   0 KB free with 0.6 KB in files = FAT tables / directory clusters read as erased flash (damaged volume; no
   partition overlap). Cause of the first damage unknown (power cut during a write? it predates factory reset);

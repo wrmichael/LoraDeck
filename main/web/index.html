@@ -575,8 +575,10 @@ $("otaGo").onclick=async()=>{
   await otaSend(new Uint8Array(await f.arrayBuffer()));
 };
 const OTA_SITE="https://wrmichael.github.io/LoraDeck/";
+// each board has its own firmware on the flasher site (the Cardputer's under cardputer/)
+function otaBase(ch){return OTA_SITE+(S&&S.board==="cardputer_adv"?"cardputer/":"")+(ch==="stable"?"stable/":"");}
 async function otaLatest(ch){
-  const m=$("otaMsg"),base=OTA_SITE+(ch==="stable"?"stable/":"");
+  const m=$("otaMsg"),base=otaBase(ch);
   try{
     m.textContent="Asking the flasher site for the newest "+ch+" version…";
     const man=await (await fetch(base+"manifest.json",{cache:"no-store"})).json();
@@ -596,7 +598,7 @@ function otaVersions(){
   if(Date.now()-otaChecked<60000)return;otaChecked=Date.now();
   for(const [ch,id] of [["stable","otaVs"],["beta","otaVb"]]){
     const ac=new AbortController();setTimeout(()=>ac.abort(),5000);
-    fetch(OTA_SITE+(ch==="stable"?"stable/":"")+"manifest.json",{cache:"no-store",signal:ac.signal}).then(r=>{if(!r.ok)throw 0;return r.json();}).then(m=>{
+    fetch(otaBase(ch)+"manifest.json",{cache:"no-store",signal:ac.signal}).then(r=>{if(!r.ok)throw 0;return r.json();}).then(m=>{
       const c=vcmp(m.version,S.ver);
       $(id).textContent=m.version+(c>0?"  (newer)":c===0?"  (installed)":"  (older)");
     }).catch(()=>{$(id).textContent=ch==="stable"?"not released yet, or no internet in this browser":"no internet in this browser";});

@@ -9,6 +9,9 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_ota_ops.h"
+#include "esp_app_desc.h"
+#include <string>
+#include "esp_partition.h"
 #include "esp_app_format.h"
 #include "esp_rom_crc.h"
 #include "esp_timer.h"
@@ -81,8 +84,18 @@ static esp_err_t chunk(httpd_req_t* req) {
         if (piece[0] != ESP_IMAGE_HEADER_MAGIC || (piece[12] | piece[13] << 8) != kChipS3)
             return reply(req, false, "That is not LoRaDeck firmware for the ESP32-S3. Nothing was changed.");
         const esp_app_desc_t* d = (const esp_app_desc_t*)(piece + sizeof(esp_image_header_t) + sizeof(esp_image_segment_header_t));
-        if (d->magic_word != ESP_APP_DESC_MAGIC_WORD || strncmp(d->project_name, "loradeck", 32) != 0)
+        if (d->magic_word != ESP_APP_DESC_MAGIC_WORD || strncmp(d->project_name, "loradeck", 8) != 0)
             return reply(req, false, "That is not LoRaDeck firmware. Nothing was changed.");
+        // each board has its own project name (loradeck = Heltec V3, loradeck-cardputer = Cardputer-Adv)
+        if (strncmp(d->project_name, esp_app_get_description()->project_name, 32) != 0)
+            return reply(req, false, std::string("That is LoRaDeck for another board (") + d->project_name +
+                                         "); this board needs " + esp_app_get_description()->project_name + ". Nothing was changed.");
+        // started from an SD card by M5Launcher: the partitions are Launcher's, an update here could overwrite it
+        const esp_partition_t* run = esp_ota_get_running_partition();
+        if (!esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_FAT, "storage") ||
+            !run || (strcmp(run->label, "ota_0") != 0 && strcmp(run->label, "ota_1") != 0))
+            return reply(req, false, "This LoRaDeck was started by another loader (e.g. M5Launcher from the SD card): "
+                                     "update it the same way (new .bin on the card). Nothing was changed.");
         memcpy(s.ver, d->version, 32);
         s.part = esp_ota_get_next_update_partition(nullptr);
         if (!s.part || total > s.part->size) return reply(req, false, "no room for that image");

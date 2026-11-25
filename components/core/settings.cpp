@@ -28,7 +28,12 @@ bool callOk(const std::string& s) {
 bool pinOk(long p) {
     if (p == -1) return true;
     if (p < 0 || p > 48 || (p >= 22 && p <= 32)) return false;   // 22-25 do not exist, 26-32 are the flash
+#if defined(LORADECK_CARDPUTER)
+    // Cardputer-Adv + Cap LoRa-1262: radio, I2C, LCD, keyboard IRQ, battery, USB, audio, LED (GPS 13/15 allowed)
+    static const int used[] = {3, 4, 5, 6, 14, 39, 40, 8, 9, 33, 34, 35, 36, 37, 38, 10, 11, 19, 20, 21, 41, 42, 43, 45, 46};
+#else
     static const int used[] = {8, 9, 10, 11, 12, 13, 14, 17, 18, 21, 36, 43, 44};
+#endif
     for (int u : used) if (p == u) return false;
     return true;
 }

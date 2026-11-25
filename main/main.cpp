@@ -28,6 +28,7 @@ static App s_app;
 volatile bool g_rebootReq = false;
 static volatile int s_resetReq = 0;                       // 1 settings, 2 everything (format the storage)
 static wl_handle_t s_wl = WL_INVALID_HANDLE;
+static const char* s_storageLabel = "storage";           // the FAT partition in use (another under M5Launcher)
 
 static LoraConfig radioCfg() {
     LoraConfig c;
@@ -103,11 +104,11 @@ static void doFactoryReset(int what) {
         // Format through the file system and its wear levelling (a raw erase under wear levelling can leave a
         // half-wiped, damaged volume if anything interrupts it). Only if formatting fails: erase it all, which
         // makes the next start format it.
-        esp_err_t e = esp_vfs_fat_spiflash_format_rw_wl("/data", "storage");
+        esp_err_t e = s_storageLabel ? esp_vfs_fat_spiflash_format_rw_wl("/data", s_storageLabel) : ESP_FAIL;
         ESP_LOGW(TAG, "storage formatted: %s", esp_err_to_name(e));
         if (e != ESP_OK) {
             if (s_wl != WL_INVALID_HANDLE) esp_vfs_fat_spiflash_unmount_rw_wl("/data", s_wl);
-            const esp_partition_t* p = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_FAT, "storage");
+            const esp_partition_t* p = s_storageLabel ? esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_FAT, s_storageLabel) : nullptr;
             if (p) esp_partition_erase_range(p, 0, p->size);
         }
     } else {
@@ -176,7 +177,18 @@ extern "C" void app_main(void) {
     mc.format_if_mount_failed = true;
     mc.max_files = 6;
     mc.allocation_unit_size = 4096;
-    if (esp_vfs_fat_spiflash_mount_rw_wl("/data", "storage", &mc, &s_wl) != ESP_OK) ESP_LOGE(TAG, "storage did not mount");
+    // LoRaDeck's own partition table names it "storage"; started from an SD card by M5Launcher the table is
+    // Launcher's, so take its first FAT data partition instead
+    const char* label = "storage";
+    s_storageLabel = label;
+    if (!esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_FAT, "storage")) {
+        const esp_partition_t* fat = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_FAT, nullptr);
+        label = fat ? fat->label : nullptr;
+        s_storageLabel = label;
+        ESP_LOGW(TAG, "no \"storage\" partition (not LoRaDeck's partition table): using %s", label ? label : "none");
+    }
+    if (!label) ESP_LOGE(TAG, "no FAT partition: settings and log cannot be saved");
+    else if (esp_vfs_fat_spiflash_mount_rw_wl("/data", label, &mc, &s_wl) != ESP_OK) ESP_LOGE(TAG, "storage did not mount");
     else {
         storageCheck();
         conlog_start();
@@ -186,12 +198,14 @@ extern "C" void app_main(void) {
     s_app.begin("/data");
     ESP_LOGI(TAG, "LoRaDeck %s, call=%s", s_app.version.c_str(), s_app.cfg.call.c_str());
 
+    bool boardOk = board_init();                          // Cardputer: the Cap LoRa-1262's antenna switch
     oled::begin();
     oled::clear();
     oled::bigText(0, 2, s_app.cfg.call.empty() ? "LoRaDeck" : s_app.cfg.call.c_str());
     oled::text(0, 5, "LoRaDeck by AC9HP");
-    oled::text(0, 7, s_app.version.c_str());
+    oled::text(0, 7, boardOk ? s_app.version.c_str() : "Cap LoRa not found!");
     oled::show();
+    ESP_LOGI(TAG, "board: %s", board_name());
 
     sx1262::onReceive = [](const uint8_t* d, int n, int rssi, float snr) { s_app.onPacket(d, n, rssi, snr); };
     sx1262::onSent = [] { s_app.onTxDone(); };

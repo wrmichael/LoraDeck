@@ -1,6 +1,6 @@
 #pragma once
 #include <cstdint>
-typedef int esp_err_t; enum { ESP_OK = 0 };
+typedef int esp_err_t; enum { ESP_OK = 0, ESP_FAIL = -1 };
 typedef enum { UART_NUM_1 = 1 } uart_port_t;
 enum { UART_DATA_8_BITS, UART_PARITY_DISABLE, UART_STOP_BITS_1, UART_HW_FLOWCTRL_DISABLE, UART_SCLK_DEFAULT };
 #define UART_PIN_NO_CHANGE (-1)
