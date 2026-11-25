@@ -1,6 +1,6 @@
 {
-  "name": "LoRaDeck",
-  "version": "0.2.12",
+  "name": "LoRaDeck (Heltec V3)",
+  "version": "0.3.0",
   "new_install_prompt_erase": true,
   "new_install_improv_wait_time": 0,
   "builds": [
