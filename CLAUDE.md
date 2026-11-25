@@ -16,7 +16,7 @@ Commits: `git -c user.name="Wayne Michael" -c user.email="wrmichael@users.norepl
   from SD); storage = "storage" or the first FAT data partition.
 - 0.3.1 Cardputer keyboard (main/cardui.cpp): TCA8418 @0x34 on the board's I2C bus (board_i2c_bus()), polled every
   15 ms; regs 0x1D=0x7F 0x1E=0xFF 0x1F=0 0x01=1; key n-1 -> trow=/10, tcol=%10 -> row tcol%4, col trow*2+(tcol>=4)
-  (from the cardputer-adv-keyboard Rust crate; untested on hardware). ` = Esc, Fn+;./, = arrows. Screens: a
+  (from the cardputer-adv-keyboard Rust crate; works on Wayne's Cardputer-Adv). ` = Esc, Fn+;./, = arrows. Screens: a
   26x11 grid of the 6x8 font at 9x12 px drawn with oled::frame() (mutex shared with the status task, which
   stops drawing while cardui_owns_screen()); menu, Terminal (App::terminalLines/terminalWaiting/lastCaller,
   app.command chat/lcw/cw), Wi-Fi (net_scan, net_join, net_hotspot apply live; STA netif always created),
@@ -84,6 +84,10 @@ Everything is operated from the web page; the OLED shows status only.
   and log. Second board done.
 - 2026-11-23 evening: 0.2.x running on both boards, "things seem to be working better". Wayne is recruiting more
   users for a wider test of this version. When reports come in: ask for the Console log download from each board.
+- **First Cardputer QSO 2026-11-24 22:15 local**: Heltec AC9HP/1 (Auto CQ) <-> Cardputer AC9HP/2 (Auto hunt from
+  the FT screen), logged on both, on 0.3.2: Cap LoRa radio, keyboard map, FT screen and long calls all confirmed.
+  0.3.3: the FT screen shows known hashed calls without <> (lines were cut off); type 4 first answer also when
+  both calls are long (before, it only worked because each board had heard the other's CQ).
 - 0.3.2 (2026-11-24): Cardputer FT screen (cardui S_FT: C cq, A auto CQ, H hunt, L listen, Space halt, arrows +
   Enter = pick; App::ftLines/ftView). Long calls: Wayne set AC9HP/LORA and the other board could not decode it
   (ft8_lib's encoder hashes a nonstandard call in every message but the CQ; host tests shared one hash table, so

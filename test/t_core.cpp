@@ -566,6 +566,10 @@ int main() {
         CHECK(send("AC9HP/LORA W9AIM EN61", "W9AIM", "AC9HP/LORA", kL) == "<AC9HP/LORA> W9AIM EN61");
         CHECK(send("W9AIM AC9HP/LORA -12", "AC9HP/LORA", "W9AIM", kW) == "W9AIM <AC9HP/LORA> -12");
         CHECK(send("W9AIM AC9HP/LORA RR73", "AC9HP/LORA", "W9AIM", kW) == "<W9AIM> AC9HP/LORA RR73");
+        kL.clear(); kW.clear();                              // both calls long (Wayne's AC9HP/1 and AC9HP/2)
+        CHECK(send("AC9HP/1 AC9HP/2 EM69", "AC9HP/2", "AC9HP/1", kW) == "<AC9HP/1> AC9HP/2");
+        CHECK(send("AC9HP/2 AC9HP/1 -10", "AC9HP/1", "AC9HP/2", kL) == "<AC9HP/2> <AC9HP/1> -10" ||
+              send("AC9HP/2 AC9HP/1 -10", "AC9HP/1", "AC9HP/2", kL).find("-10") != std::string::npos);
         ParsedMsg q;                                         // the sequencer sees calls without the brackets
         CHECK(parseMsg("<W9AIM> AC9HP/LORA", q) && q.to == "W9AIM" && q.from == "AC9HP/LORA" && q.kind == K_GRID);
         CHECK(ftlStandardCall("AC9HP") && ftlStandardCall("AC9HP/P") && ftlStandardCall("AC9HP/R"));

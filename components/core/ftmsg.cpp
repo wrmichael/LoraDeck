@@ -77,7 +77,7 @@ static bool packType4(const std::string& text, ftx_message_t& msg) {
     bool grid = x.size() == 4 && isupper((unsigned char)x[0]) && isupper((unsigned char)x[1]) &&
                 isdigit((unsigned char)x[2]) && isdigit((unsigned char)x[3]) && x != "RR73";
     if (!(x.empty() || grid || x == "RRR" || x == "RR73" || x == "73")) return false;
-    if (t[0][0] == '<' || t[1][0] == '<' || ftlStandardCall(t[1]) || !ftlStandardCall(t[0])) return false;
+    if (t[0][0] == '<' || t[1][0] == '<' || ftlStandardCall(t[1])) return false;   // theirs may be long too
     return ftx_message_encode_nonstd(&msg, &g_hashIf, t[0].c_str(), t[1].c_str(), grid ? "" : x.c_str()) == FTX_MESSAGE_RC_OK;
 }
 

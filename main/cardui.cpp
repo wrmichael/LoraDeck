@@ -499,7 +499,12 @@ static void drawFt() {
         if (i < 0 || i > last || i >= (int)lines.size()) continue;
         const Decode& d = lines[i];
         bool sent = d.snr == 99;
-        std::string t = d.text;
+        std::string t;                                        // "<AC9HP/2>" -> "AC9HP/2" (a known hashed call)
+        for (size_t i = 0; i < d.text.size(); i++) {
+            size_t e = d.text[i] == '<' ? d.text.find('>', i) : std::string::npos;
+            if (e != std::string::npos && d.text.compare(i, e - i + 1, "<...>") != 0) { t += d.text.substr(i + 1, e - i - 1); i = e; }
+            else t += d.text[i];
+        }
         bool toMe = !me.empty() && (t.rfind(me + " ", 0) == 0);
         bool cq = t.rfind("CQ ", 0) == 0;
         char snr[8];
