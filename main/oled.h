@@ -8,6 +8,9 @@ void text(int col, int row, const char* s, bool invert = false);   // 21 columns
 void bigText(int col, int row, const char* s);                     // double size: 10 columns, 2 rows high
 void show();                                                       // send the frame to the display
 void power(bool on);
+// Cardputer: the callsign (or "LoRaDeck") in gold Audiowide over the top two text rows, as on the web page.
+// Returns false on the Heltec (nothing drawn: use bigText there).
+bool title(const char* s);
 // Cardputer: draw a whole 240x135 frame; fill(y, line, ctx) fills the 240 pixels of row y (RGB565, high byte
 // first). Not used on the Heltec.
 void frame(void (*fill)(int y, uint16_t* line, void* ctx), void* ctx);

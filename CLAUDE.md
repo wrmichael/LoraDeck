@@ -84,6 +84,11 @@ Everything is operated from the web page; the OLED shows status only.
   and log. Second board done.
 - 2026-11-23 evening: 0.2.x running on both boards, "things seem to be working better". Wayne is recruiting more
   users for a wider test of this version. When reports come in: ask for the Console log download from each board.
+- 0.3.4 (2026-11-24): web Heard list newest at the top (Wayne missed the QSO lines: they arrived below the visible
+  part, autoscroll only when already at the bottom), Clear button = command "clearheard" (FT/relay lines out of
+  recent_, Terminal lines kept; Cardputer FT screen Fn+Del); "me" highlight also for <CALL>. Cardputer status
+  screen: callsign in gold Audiowide (main/audiowide.h from tools/make_audiowide.py, 30 px, 4-bit coverage,
+  21 KB; oled::title() draws it over fb rows 0-15; long calls narrowed to 232 px).
 - **First Cardputer QSO 2026-11-24 22:15 local**: Heltec AC9HP/1 (Auto CQ) <-> Cardputer AC9HP/2 (Auto hunt from
   the FT screen), logged on both, on 0.3.2: Cap LoRa radio, keyboard map, FT screen and long calls all confirmed.
   0.3.3: the FT screen shows known hashed calls without <> (lines were cut off); type 4 first answer also when

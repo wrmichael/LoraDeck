@@ -949,6 +949,12 @@ std::string App::command(const std::string& c, const std::map<std::string, std::
     }
     if (c == "txmsg") { seq.setTxMsg(atoi(arg(a, "n").c_str())); return ok(); }
     if (c == "clear") { seq.clearQso(); seq.txMsg = 0; return ok(); }
+    if (c == "clearheard") {                                  // the Heard list (FT messages); Terminal lines stay
+        std::deque<Decode> keep;
+        for (const Decode& d : recent_) if (d.kind == 1 || d.kind == 2 || d.kind == 4) keep.push_back(d);
+        recent_.swap(keep);
+        return ok();
+    }
     if (c == "nextqso") { seq.nextQso(); return ok(); }
     if (c == "log") {
         int r = seq.forceLog();

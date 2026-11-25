@@ -542,6 +542,7 @@ static void ftKey(int k) {
             return;
         }
         case '?': goTo(S_FTHELP); return;
+        case K_DEL: if (okReply(ftCmd("clearheard"))) { s_ftSel = 0; note("List cleared"); } return;
         case K_UP: case K_DOWN: {
             lines = s_app->ftLines(40);
             int n = (int)lines.size(), sel = -1;
@@ -564,14 +565,14 @@ static void ftKey(int k) {
 static void drawFtHelp() {
     gClear();
     gBar(0, "FT KEYS");
-    static const char* t[] = {"C call CQ once",
-                              "A Auto CQ (TX on)",
-                              "H Auto hunt (TX on)",
+    static const char* t[] = {"C CQ once  A Auto CQ",
+                              "H Auto hunt (A, H: TX on)",
                               "L listen (TX off)",
                               "Space HALT now",
-                              "Fn+; Fn+. pick, Enter answer",
+                              "Fn+; Fn+. pick, Enter ans.",
                               "M manual  P even/odd",
-                              "G log now  X clear  N next",
+                              "G log  X clear  N next",
+                              "Fn+Del clears the list",
                               "white = to you, green = CQ"};
     for (int i = 0; i < 9; i++) gPut(0, 1 + i, t[i]);
     bottom("` back");

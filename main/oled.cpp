@@ -20,6 +20,46 @@ static spi_device_handle_t s_tft;
 static SemaphoreHandle_t s_mx;                               // the status task and the keyboard screens share the LCD
 static const uint16_t FG = 0xA0FD, BG = 0x0000;              // amber on black, RGB565 sent high byte first
 
+#include "audiowide.h"
+// The title band: 240 x kAwHeight coverage (0-15), built when the title changes, drawn over fb rows 0-15.
+static uint8_t s_tband[kAwHeight][240];
+static uint16_t s_tpal[16];
+static char s_title[16] = "";
+static bool s_haveTitle = false;
+
+bool oled::title(const char* t) {
+    if (!t) t = "";
+    if (!strncmp(t, s_title, sizeof s_title - 1) && s_haveTitle == (*t != 0)) return true;
+    strlcpy(s_title, t, sizeof s_title);
+    memset(s_tband, 0, sizeof s_tband);
+    int idx[16], n = 0, total = 0;
+    for (const char* c = s_title; *c && n < 15; c++) {
+        const char* p = strchr(kAwChars, *c);
+        if (!p) continue;
+        idx[n++] = (int)(p - kAwChars);
+        total += kAwGlyphs[idx[n - 1]].w;
+    }
+    s_haveTitle = n > 0;
+    const int x0 = 4, avail = 232;                           // a long call is narrowed to fit
+    int w = total > avail ? avail : total;
+    for (int x = 0; x < w; x++) {
+        int sx = total > avail ? x * total / avail : x, g = 0;
+        while (g < n && sx >= kAwGlyphs[idx[g]].w) sx -= kAwGlyphs[idx[g++]].w;
+        if (g >= n) break;
+        const AwGlyph& gl = kAwGlyphs[idx[g]];
+        for (int y = 0; y < kAwHeight; y++) {
+            int k = y * gl.w + sx;
+            uint8_t b = kAwData[gl.off + k / 2];
+            s_tband[y][x0 + x] = (k & 1) ? (b & 15) : (b >> 4);
+        }
+    }
+    for (int a = 0; a < 16; a++) {                           // gold (255, 215, 0) faded to black, RGB565 swapped
+        uint16_t c = (uint16_t)(((31 * a / 15) << 11) | ((53 * a / 15) << 5));
+        s_tpal[a] = (uint16_t)((c >> 8) | (c << 8));
+    }
+    return true;
+}
+
 static void tftSend(const void* d, int n, bool data) {
     if (n <= 0) return;
     gpio_set_level(LD_TFT_DC, data ? 1 : 0);
@@ -93,6 +133,11 @@ void oled::show() {
     static uint16_t line[240];
     tftWindow(0, 7, 239, 126);                               // 240 x 120, centred in the 135 rows
     for (int y = 0; y < 120; y++) {
+        if (s_haveTitle && y < kAwHeight) {                  // fb rows 0-15 (the big text) become the title
+            for (int x = 0; x < 240; x++) line[x] = s_tpal[s_tband[y][x]];
+            tftSend(line, sizeof line, true);
+            continue;
+        }
         int sy = y * 64 / 120;
         const uint8_t* page = s_fb[sy >> 3];
         uint8_t bit = (uint8_t)(1u << (sy & 7));
@@ -205,6 +250,7 @@ void oled::show() {
 }
 
 void oled::frame(void (*)(int, uint16_t*, void*), void*) {}
+bool oled::title(const char*) { return false; }
 
 void oled::power(bool on) {
     static const uint8_t onc[] = {0xAF}, offc[] = {0xAE};

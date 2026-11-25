@@ -96,6 +96,7 @@ static void storageCheck() {
 static void doFactoryReset(int what) {
     oled::clear();
     oled::bigText(0, 0, "RESET");
+    oled::title("RESET");
     oled::text(0, 3, what == 2 ? "settings and logs" : "settings (log kept)");
     oled::text(0, 5, "restarting...");
     oled::show();
@@ -136,6 +137,7 @@ static void oledTask(void*) {
             if (prgHeld >= 20) { s_resetReq = 1; vTaskDelay(portMAX_DELAY); }
             oled::clear();
             oled::bigText(0, 0, "RESET?");
+            oled::title("RESET");
             int left = (21 - prgHeld) / 2;
             snprintf(line, sizeof line, "keep holding PRG %d s", left < 0 ? 0 : left > 10 ? 10 : left);
             oled::text(0, 3, line);
@@ -149,6 +151,7 @@ static void oledTask(void*) {
         App::Glance g = s_app.glance();
         oled::clear();
         oled::bigText(0, 0, g.call.empty() ? "LoRaDeck" : g.call.c_str());
+        oled::title(g.call.empty() ? "LoRaDeck" : g.call.c_str());   // Cardputer: in gold Audiowide
         time_t t = (time_t)(clk::utcMs() / 1000);
         struct tm tm;
         gmtime_r(&t, &tm);
@@ -208,7 +211,8 @@ extern "C" void app_main(void) {
     bool boardOk = board_init();                          // Cardputer: the Cap LoRa-1262's antenna switch
     oled::begin();
     oled::clear();
-    oled::bigText(0, 2, s_app.cfg.call.empty() ? "LoRaDeck" : s_app.cfg.call.c_str());
+    const char* call = s_app.cfg.call.empty() ? "LoRaDeck" : s_app.cfg.call.c_str();
+    oled::bigText(0, oled::title(call) ? 0 : 2, call);       // Cardputer: the call in Audiowide at the top
     oled::text(0, 5, "LoRaDeck by AC9HP");
     oled::text(0, 7, boardOk ? s_app.version.c_str() : "Cap LoRa not found!");
     oled::show();

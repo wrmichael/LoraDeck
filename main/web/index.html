@@ -90,7 +90,7 @@ h3{margin:4px 0 10px;font-size:16px}
 <section id="tab-op">
   <div class="grid2">
     <div class="card">
-      <h3>Heard</h3>
+      <div class="row"><h3 style="margin-right:auto">Heard</h3><span class="hint">newest at the top</span><button class="b" id="rxClear" style="padding:4px 12px">Clear</button></div>
       <div id="rx"></div>
       <p class="hint">Tap a CQ to call that station, or a message to you to answer it.</p>
     </div>
@@ -432,11 +432,12 @@ $("par").onclick=()=>cmd("parity",{v:S.cfg&&S.cfg.cqParity==="1"?"0":"1"}).then(
 document.querySelectorAll("[data-op]").forEach(b=>b.onclick=()=>cmd("opmode",{m:b.dataset.op}).then(poll));
 function utc(ms){const d=new Date(ms);return d.toISOString().substr(11,8);}
 function renderRx(){
-  const el=$("rx"),atBottom=el.scrollTop+el.clientHeight>=el.scrollHeight-20;
+  const el=$("rx");
   el.innerHTML="";
-  for(const d of rxList){
+  for(let i=rxList.length-1;i>=0;i--){                       // newest at the top: nothing new arrives out of sight
+    const d=rxList[i];
     const div=document.createElement("div");
-    const me=S.call&&(" "+d.text+" ").includes(" "+S.call+" ");
+    const me=S.call&&(" "+d.text.replace(/[<>]/g,"")+" ").includes(" "+S.call+" ");   // also as a hashed call <CALL>
     div.className=d.k===3?"rly":d.k===1||d.k===4?"chat":d.snr===99?"tx":d.text.startsWith("CQ ")?"cq":me?"me":"";
     div.innerHTML=`<span>${utc(d.t)}</span><span>${d.snr===99?"TX":d.snr}</span><span title="clock offset of the sender, s">${d.snr===99?"":(d.dt>=0?"+":"")+d.dt.toFixed(1)}</span><span></span>`;
     if(d.h&&d.snr!==99)div.title="came through "+d.h+(d.h>1?" repeaters":" repeater")+(d.path?": "+d.path.split(",").join(" → "):"")+", SNR "+d.snr+" dB here";
@@ -444,8 +445,10 @@ function renderRx(){
     if(d.snr!==99&&d.k===0)div.onclick=async()=>{const r=await cmd("pick",{id:d.id});if(!r.ok)alert(r.err);poll();};
     el.appendChild(div);
   }
-  if(atBottom)el.scrollTop=el.scrollHeight;
 }
+$("rx").innerHTML='<p class="hint" style="padding:8px">Nothing heard yet.</p>';
+$("rxClear").onclick=async()=>{const r=await cmd("clearheard");if(!r.ok){alert(r.err);return;}
+  rxList.length=0;renderRx();};
 function render(){
   const tx=S.tx||{};
   $("callLong").classList.toggle("hide",S.callStd!==false);

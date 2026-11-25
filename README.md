@@ -163,7 +163,8 @@ board unlicensed under Part 15 within its limits. This is a summary, not legal a
 - **M5Stack Cardputer-Adv + Cap LoRa-1262** (from 0.3.0): the same LoRaDeck, operated from the same web page;
   the status screen on its 240x135 LCD. The cap's GPS is set up by default (pins 15/13, 115200 baud), so the
   clock and the grid come from GPS. Plug the cap in, with its antenna on, before switching on; if the cap is
-  missing the screen says "Cap LoRa not found!". The status screen shows the battery (%) after the address.
+  missing the screen says "Cap LoRa not found!". The status screen shows your callsign in gold Audiowide (as on
+  the web page) and the battery (%) after the address.
 
 **Cardputer keyboard (from 0.3.1; FT-LoRa screen 0.3.2):** on the status screen press **Enter** for the menu (or **F** FT-LoRa, **T** Terminal,
 **W** Wi-Fi, **?** keys). **`** (the Esc key) goes back. Fn+; and Fn+. are up and down.
@@ -174,7 +175,7 @@ board unlicensed under Part 15 within its limits. This is a summary, not legal a
 - **FT-LoRa** (**F** on the status screen; works in FT-MESH and FT-CW too): **C** calls CQ once, **A** Auto CQ,
   **H** Auto hunt (both switch TX on), **L** listen (TX off), **Space** HALT. Fn+; / Fn+. pick a message heard,
   **Enter** answers it. **M** manual, **P** even/odd slots, **G** log now, **X** clear the QSO, **N** next QSO,
-  **?** these keys. Messages to you are white, CQs green, ours blue; the top bar turns red while sending.
+  **Fn+Del** clears the list, **?** these keys. Messages to you are white, CQs green, ours blue; the top bar turns red while sending.
 - **Wi-Fi:** shows the hotspot (name, password, address) and the home network. **S** scans and joins a
   network (Enter, then its password), **N** joins one by typing its name, **F** forgets it, **H** changes the
   hotspot's name and password. These take effect at once, no restart.

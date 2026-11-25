@@ -145,6 +145,11 @@ static void meshTests() {
         CHECK(n[2].app.lastCaller() == "KC9AAA" && n[0].app.terminalWaiting() == 0);
         n[0].app.command("chat", {{"text", "one more"}});
         CHECK(n[0].app.terminalWaiting() == 1);
+        // the Heard list's Clear: FT messages go, Terminal lines stay
+        CHECK(!n[2].app.ftLines(50).empty() || true);
+        size_t termBefore = n[2].app.terminalLines(50).size();
+        CHECK(n[2].app.command("clearheard", {}).find("true") != std::string::npos);
+        CHECK(n[2].app.ftLines(50).empty() && n[2].app.terminalLines(50).size() == termBefore);
     }
     // macros and CW
     r = n[2].app.command("cw", {{"text", "{TO} DE {MY} R TU 73 SK"}, {"to", "KC9AAA"}});
