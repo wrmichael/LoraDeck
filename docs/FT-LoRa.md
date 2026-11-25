@@ -73,6 +73,17 @@ slot (after the packets and, in FT-MESH, the relay windows). Used for the CW ID 
 `cwIdMin` minutes while the station transmits, sped up to fit the slot if needed) and for CW messages from the
 Terminal. It is copied by ear on any 33 cm receiver; LoRaDecks do not decode it.
 
+## Long callsigns
+
+The payload is FT8's, so its callsign rules apply. A standard call (up to 6 characters, optionally /P or /R)
+goes whole in every message. Longer ones (AC9HP/LORA, VE3/AC9HP; at most 11 characters) cannot: FT8 sends them
+whole only in a type 4 message (one call whole, the other as a 12-bit hash, no grid) and as a 22-bit hash
+everywhere else. Each station keeps a table of the calls it has heard whole and their hashes; a hash it does
+not know shows as `<...>`. As WSJT-X does, a station with a long call sends its CQ, its first answer
+("<THEM> AC9HP/LORA") and its endings (RRR, RR73, 73) as type 4, with its own call whole; reports use the
+hash, which the other station has learned by then. Its grid is never sent. Every station puts its own call
+in its table at start, so a message to its hashed call is recognised at once.
+
 ## Signal reports
 The report field carries the LoRa packet SNR in dB (rounded), range -24..+20 like FT8.
 

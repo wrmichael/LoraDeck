@@ -19,10 +19,17 @@ std::string upper(std::string s) {
     for (char& c : s) c = (char)toupper((unsigned char)c);
     return s;
 }
+// 3 to 11 characters (FT8's longest call), letters, digits and "/" between parts (VE3/AC9HP, AC9HP/P), with a digit.
 bool callOk(const std::string& s) {
-    if (s.empty() || s.size() > 11) return false;
-    for (char c : s) if (!isalnum((unsigned char)c) && c != '/') return false;
-    return true;
+    if (s.size() < 3 || s.size() > 11 || s.front() == '/' || s.back() == '/' || s.find("//") != std::string::npos) return false;
+    bool digit = false;
+    int slashes = 0;
+    for (char c : s) {
+        if (c == '/') slashes++;
+        else if (isdigit((unsigned char)c)) digit = true;
+        else if (!isalpha((unsigned char)c)) return false;
+    }
+    return digit && slashes <= 2;
 }
 // GPIOs the Heltec V3 uses itself (radio, OLED, Vext, console) or that are not usable
 bool pinOk(long p) {

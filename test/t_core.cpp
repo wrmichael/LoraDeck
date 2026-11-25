@@ -381,6 +381,18 @@ int main() {
         CHECK(A.logged[0].find("<OPERATOR:") == std::string::npos);   // operator = station call: left out
     }
     if (!B.logged.empty()) CHECK(B.logged[0].find("<CALL:5>AC9HP") != std::string::npos);
+    {   // the Cardputer's FT screen: the messages of the QSO, both sides; the sequencer at a glance
+        std::vector<Decode> fa = A.app.ftLines(30);
+        bool heardCall = false, sentCq = false;
+        for (const Decode& d : fa) {
+            if (d.snr != 99 && d.text.find("AC9HP/P") != std::string::npos) heardCall = true;
+            if (d.snr == 99 && d.text.rfind("CQ AC9HP", 0) == 0) sentCq = true;
+        }
+        CHECK(heardCall && sentCq);
+        App::FtView va = A.app.ftView(), vb = B.app.ftView();
+        CHECK(va.mode == "FT-LoRa" && va.opMode == OP_AUTO_CQ && va.txEn && va.parity == 0);
+        CHECK(vb.opMode == OP_AUTO_HUNT && vb.parity == 1);
+    }
     printf("QSO took %.1f s\n", simMs / 1000.0);
     CHECK(simMs < 60000);                                   // 5 s slots: well under a minute
     // A sends in even slots (cqParity 0), B in odd slots
@@ -437,6 +449,29 @@ int main() {
         printf("QSO with the second clock %+lld ms off: %s in %.1f s\n", (long long)skew, ok ? "logged" : "FAILED", took / 1000.0);
     }
     B.app.clockSkewMs = 0;
+    // a long call (AC9HP/LORA) hunting: its answer has no grid ("<AC9HP> AC9HP/LORA"); the QSO still completes
+    for (const char* lc : {"AC9HP/LORA", "VE3/W9AIM"}) {
+        std::string file = lc;
+        for (char& ch : file) if (ch == '/') ch = '_';
+        unlink(("/tmp/ld_b/" + file + "_log.adi").c_str());
+        CHECK(B.app.command("set", {{"call", lc}}).find("true") != std::string::npos);
+        CHECK(B.app.stateJson(0, false).find("\"callStd\":false") != std::string::npos);
+        A.logged.clear();
+        B.logged.clear();
+        air.clear();
+        A.app.command("clear", {});
+        B.app.command("clear", {});
+        A.app.command("halt", {});
+        B.app.command("halt", {});
+        simMs += 60000;
+        CHECK(A.app.command("txen", {{"on", "1"}}).find("true") != std::string::npos);
+        CHECK(B.app.command("txen", {{"on", "1"}}).find("true") != std::string::npos);
+        int64_t took = run(120000);
+        bool ok = A.logged.size() == 1 && B.logged.size() == 1 &&
+                  A.logged[0].find("<CALL:" + std::to_string(strlen(lc)) + ">" + lc) != std::string::npos;
+        CHECK(ok);
+        printf("QSO with the long call %s: %s in %.1f s\n", lc, ok ? "logged" : "FAILED", took / 1000.0);
+    }
     {                                                       // a second station with the same call is reported
         uint8_t pk[FTL_PACKET];
         CHECK(ftlPack("CQ AC9HP EM69", pk));
@@ -505,6 +540,43 @@ int main() {
     meshTests();
     ftcwTests();
     termRelayTests();
+    // long calls (AC9HP/LORA): each board has its own table of hashed calls. Our first answer and the endings
+    // carry our call whole (type 4), so the station we call learns it before the messages with only its hash.
+    {
+        auto send = [](const std::string& m, const std::string& from, const std::string& to, std::vector<std::string>& known) {
+            uint8_t p[FTL_PACKET];
+            std::string b;
+            ftlForget(); ftlRemember(from);
+            if (!ftlPack(m, p)) return std::string("(cannot pack)");
+            ftlForget(); ftlRemember(to);
+            for (const std::string& c : known) ftlRemember(c);
+            if (!ftlUnpack(p, FTL_PACKET, b)) return std::string("(cannot unpack)");
+            ParsedMsg q;
+            if (parseMsg(b, q) && q.from.find('/') != std::string::npos && b.find("<" + q.from + ">") == std::string::npos) known.push_back(q.from);
+            return b;
+        };
+        std::vector<std::string> kL, kW;                     // what AC9HP/LORA and W9AIM have heard whole
+        CHECK(send("CQ W9AIM EN61", "W9AIM", "AC9HP/LORA", kL) == "CQ W9AIM EN61");
+        CHECK(send("W9AIM AC9HP/LORA EM69", "AC9HP/LORA", "W9AIM", kW) == "<W9AIM> AC9HP/LORA");
+        CHECK(send("AC9HP/LORA W9AIM -10", "W9AIM", "AC9HP/LORA", kL) == "<AC9HP/LORA> W9AIM -10");
+        CHECK(send("W9AIM AC9HP/LORA R-12", "AC9HP/LORA", "W9AIM", kW) == "W9AIM <AC9HP/LORA> R-12");
+        CHECK(send("W9AIM AC9HP/LORA 73", "AC9HP/LORA", "W9AIM", kW) == "<W9AIM> AC9HP/LORA 73");
+        kL.clear(); kW.clear();
+        CHECK(send("CQ AC9HP/LORA EM69", "AC9HP/LORA", "W9AIM", kW) == "CQ AC9HP/LORA");
+        CHECK(send("AC9HP/LORA W9AIM EN61", "W9AIM", "AC9HP/LORA", kL) == "<AC9HP/LORA> W9AIM EN61");
+        CHECK(send("W9AIM AC9HP/LORA -12", "AC9HP/LORA", "W9AIM", kW) == "W9AIM <AC9HP/LORA> -12");
+        CHECK(send("W9AIM AC9HP/LORA RR73", "AC9HP/LORA", "W9AIM", kW) == "<W9AIM> AC9HP/LORA RR73");
+        ParsedMsg q;                                         // the sequencer sees calls without the brackets
+        CHECK(parseMsg("<W9AIM> AC9HP/LORA", q) && q.to == "W9AIM" && q.from == "AC9HP/LORA" && q.kind == K_GRID);
+        CHECK(ftlStandardCall("AC9HP") && ftlStandardCall("AC9HP/P") && ftlStandardCall("AC9HP/R"));
+        CHECK(!ftlStandardCall("AC9HP/LORA") && !ftlStandardCall("VE3/AC9HP"));
+        ftlForget();
+        Settings c;                                          // callsign rules: 3-11 characters, a digit, "/" between parts
+        CHECK(c.set("call", "ac9hp/lora") && c.set("call", "VE3/AC9HP") && c.set("call", "VE3/AC9HP/P"));
+        CHECK(!c.set("call", "AC9HP/LORA1") || c.call == "AC9HP/LORA1");
+        CHECK(!c.set("call", "AC9HP/LORA12") && !c.set("call", "/AC9HP") && !c.set("call", "AC9HP/") &&
+              !c.set("call", "AC9HP//P") && !c.set("call", "LORADECK") && !c.set("call", "A1"));
+    }
     printf("t_core: %d checks, %d failed\n", checks, fails);
     return fails ? 1 : 0;
 }

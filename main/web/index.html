@@ -154,6 +154,7 @@ h3{margin:4px 0 10px;font-size:16px}
   <div class="card" id="setform">
     <h3>Station</h3>
     <label class="f"><span>Station callsign (sent on the air)</span><input data-k="call" autocapitalize="characters"></label>
+    <p class="hint hide" id="callLong" style="color:#e0a030">This call is longer than FT8's standard calls (up to 6 characters, or with /P or /R). It works in FT-LoRa, but like WSJT-X: your grid is not sent, and other stations see your call in full only in your CQ, your first answer and your RR73/73. Stations that did not hear one of those see &lt;...&gt;. AC9HP/P or the plain call avoids that. The Terminal is not affected.</p>
     <label class="f"><span>Operator callsign (yours, when the station call is a club or other call; blank = same)</span><input data-k="operator" autocapitalize="characters" placeholder="same as station"></label>
     <label class="f"><span>Grid locator</span><input data-k="grid" autocapitalize="characters"></label>
     <label class="f"><span>Directed CQ (e.g. POTA, blank = plain)</span><input data-k="cqTag" autocapitalize="characters"></label>
@@ -447,6 +448,7 @@ function renderRx(){
 }
 function render(){
   const tx=S.tx||{};
+  $("callLong").classList.toggle("hide",S.callStd!==false);
   $("hinfo").textContent=`${callName()}${S.opCall&&S.opCall!==S.call?" (op "+S.opCall+")":""}  ${(S.radio.freq/1e6).toFixed(3)} MHz ${S.radio.band||""}  SF${S.radio.sf} BW${S.radio.bw}  ${S.radio.pwr} dBm`;
   $("hclock").textContent=S.clock?utc(S.utc)+" UTC · "+S.clkSrc:"clock not set";
   $("txen").textContent=tx.en?"TX enabled":"Enable TX";

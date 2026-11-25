@@ -1,6 +1,6 @@
 // Cardputer-Adv: the keyboard (TCA8418 at I2C 0x34 on G8/G9) and the screens it drives on the LCD.
 // Status is drawn by main.cpp's status task; from there Enter opens the menu: Terminal (chat over LoRa, CW over
-// LoRa, keyed CW, like the web page's Terminal), Wi-Fi (scan and join a home network, change the hotspot) and
+// LoRa, keyed CW, like the web page's Terminal), FT-LoRa (one key per action), Wi-Fi (scan and join a home network, change the hotspot) and
 // a page of keys. Text is a 26 x 11 grid of the 6x8 font drawn 1.5 times (9 x 12 pixels).
 #include "cardui.h"
 
@@ -180,7 +180,7 @@ static void wrap(const std::string& text, std::vector<std::pair<std::string, int
 
 // ---------------------------------------------------------------- screens
 
-enum { S_STATUS, S_MENU, S_TERM, S_WIFI, S_SCAN, S_INPUT, S_HELP };
+enum { S_STATUS, S_MENU, S_TERM, S_WIFI, S_SCAN, S_INPUT, S_HELP, S_FT, S_FTHELP };
 static volatile int s_scr = S_STATUS;
 static std::string s_note;                                // a message on the bottom line for a few seconds
 static int s_noteCol = C_AMBER;
@@ -455,8 +455,126 @@ static void inputKey(int k) {
     if (k >= 0x20 && k < 0x7F && s_inVal.size() < 63) s_inVal += (char)k;
 }
 
+
+// ---- FT-LoRa (also FT-MESH / FT-CW, whichever mode is set): one key per action, the arrows pick a message
+static uint32_t s_ftSel = 0;                              // id of the picked message, 0 = none
+
+static std::string ftCmd(const char* c, const std::map<std::string, std::string>& a = {}) {
+    std::string r = s_app->command(c, a);
+    if (!okReply(r)) note(errText(r), C_RED);
+    return r;
+}
+
+static void drawFt() {
+    static const char* op[3] = {"MANUAL", "AUTO CQ", "HUNT"};
+    App::FtView v = s_app->ftView();
+    gClear();
+    std::string h = v.mode + " " + op[v.opMode < 0 || v.opMode > 2 ? 0 : v.opMode] + (v.parity ? " odd" : " even");
+    std::string tx = v.tx ? "TX" : v.txEn ? "tx on" : "listen";
+    h += std::string(COLS > (int)(h.size() + tx.size()) ? COLS - h.size() - tx.size() : 1, ' ') + tx;
+    gBar(0, h, v.tx ? C_RED : C_AMBER);
+    if (v.dx.empty()) {
+        gPut(0, 1, "QSO -", C_DIM);
+        if (!s_app->cfg.call.empty() && !ftlStandardCall(s_app->cfg.call)) gPut(7, 1, "long call: no grid", C_DIM);
+    }
+    else {
+        std::string q = "QSO " + v.dx + (v.dxGrid.empty() ? "" : " " + v.dxGrid);
+        if (v.haveSent) q += " s" + std::to_string(v.rptSent);
+        if (v.haveRcvd) q += " r" + std::to_string(v.rptRcvd);
+        gPut(0, 1, q, C_WHITE);
+    }
+    if (v.waitNext) gPut(0, 2, "Done. N for the next QSO", C_GREEN);
+    else if (!v.next.empty()) gPut(0, 2, "> " + v.next, v.txEn ? C_GREEN : C_DIM);
+    const std::string& me = s_app->cfg.call;
+    std::vector<Decode> lines = s_app->ftLines(40);
+    const int view = 6, top = 3;                              // rows 3..8
+    int sel = -1;
+    for (int i = 0; i < (int)lines.size(); i++) if (lines[i].id == s_ftSel) sel = i;
+    if (sel < 0) s_ftSel = 0;
+    int last = (int)lines.size() - 1;                         // the newest at the bottom, or around the pick
+    if (sel >= 0 && sel < last - view + 1) last = sel + view - 1;
+    if (lines.empty()) gPut(0, top + 1, me.empty() ? "Set your callsign first" : "Listening...", me.empty() ? C_RED : C_DIM);
+    for (int r = 0; r < view; r++) {
+        int i = last - view + 1 + r;
+        if (i < 0 || i > last || i >= (int)lines.size()) continue;
+        const Decode& d = lines[i];
+        bool sent = d.snr == 99;
+        std::string t = d.text;
+        bool toMe = !me.empty() && (t.rfind(me + " ", 0) == 0);
+        bool cq = t.rfind("CQ ", 0) == 0;
+        char snr[8];
+        snprintf(snr, sizeof snr, "%+3d ", d.snr < -99 ? -99 : d.snr > 99 ? 99 : d.snr);
+        std::string line = (sent ? std::string(">   ") : std::string(snr)) + t + (d.hops ? " *" : "");
+        int c = sent ? C_CYAN : toMe ? C_WHITE : cq ? C_GREEN : C_AMBER;
+        gPut(0, top + r, line, c, d.id == s_ftSel);
+    }
+    gPut(0, ROWS - 2, v.status.substr(0, COLS), C_DIM);
+    bottom(s_ftSel ? "Enter answer  ` unpick" : "C cq A auto H hunt L stop");
+}
+
+static void ftKey(int k) {
+    s_app->command("ping", {});                               // a key counts as the operator being there
+    std::vector<Decode> lines;
+    auto pickable = [&](int i) { return lines[i].snr != 99; };
+    switch (k) {
+        case K_ESC: if (s_ftSel) s_ftSel = 0; else goTo(S_STATUS); return;
+        case 'c': case 'C': if (okReply(ftCmd("cq"))) note("Calling CQ", C_GREEN); return;
+        case 'a': case 'A':
+            if (okReply(ftCmd("opmode", {{"m", "1"}})) && okReply(ftCmd("txen", {{"on", "1"}}))) note("Auto CQ: TX on", C_GREEN);
+            return;
+        case 'h': case 'H':
+            if (okReply(ftCmd("opmode", {{"m", "2"}})) && okReply(ftCmd("txen", {{"on", "1"}}))) note("Hunting: answers a CQ", C_GREEN);
+            return;
+        case 'm': case 'M': if (okReply(ftCmd("opmode", {{"m", "0"}}))) note("Manual: one QSO at a time"); return;
+        case 'l': case 'L': if (okReply(ftCmd("txen", {{"on", "0"}}))) note("Listening: TX off"); return;
+        case ' ': ftCmd("halt"); note("HALT: TX stopped", C_RED); return;
+        case 'n': case 'N': ftCmd("nextqso"); return;
+        case 'g': case 'G': if (okReply(ftCmd("log"))) note("Logged", C_GREEN); return;
+        case 'x': case 'X': ftCmd("clear"); note("QSO cleared"); return;
+        case 'p': case 'P': {
+            bool odd = s_app->ftView().parity == 1;
+            if (okReply(ftCmd("parity", {{"v", odd ? "0" : "1"}}))) note(odd ? "CQ in even slots" : "CQ in odd slots");
+            return;
+        }
+        case '?': goTo(S_FTHELP); return;
+        case K_UP: case K_DOWN: {
+            lines = s_app->ftLines(40);
+            int n = (int)lines.size(), sel = -1;
+            for (int i = 0; i < n; i++) if (lines[i].id == s_ftSel) sel = i;
+            if (k == K_UP) {                                   // older; from no pick: the newest heard
+                for (int i = (sel < 0 ? n : sel) - 1; i >= 0; i--) if (pickable(i)) { s_ftSel = lines[i].id; return; }
+            } else if (sel >= 0) {
+                for (int i = sel + 1; i < n; i++) if (pickable(i)) { s_ftSel = lines[i].id; return; }
+                s_ftSel = 0;                                   // past the newest: no pick
+            }
+            return;
+        }
+        case '\r':
+            if (!s_ftSel) { note("Fn+; picks a message"); return; }
+            if (okReply(ftCmd("pick", {{"id", std::to_string(s_ftSel)}}))) { note("Answering", C_GREEN); s_ftSel = 0; }
+            return;
+    }
+}
+
+static void drawFtHelp() {
+    gClear();
+    gBar(0, "FT KEYS");
+    static const char* t[] = {"C call CQ once",
+                              "A Auto CQ (TX on)",
+                              "H Auto hunt (TX on)",
+                              "L listen (TX off)",
+                              "Space HALT now",
+                              "Fn+; Fn+. pick, Enter answer",
+                              "M manual  P even/odd",
+                              "G log now  X clear  N next",
+                              "white = to you, green = CQ"};
+    for (int i = 0; i < 9; i++) gPut(0, 1 + i, t[i]);
+    bottom("` back");
+}
+
 // ---- menu and keys
-static const char* MENU[] = {"Terminal", "Wi-Fi", "Keys"};
+static const char* MENU[] = {"FT-LoRa", "Terminal", "Wi-Fi", "Keys"};
+static const int NMENU = 4;
 static void drawMenu() {
     gClear();
     gBar(0, "LoRaDeck " + s_app->version);
@@ -465,24 +583,24 @@ static void drawMenu() {
         std::string b = std::to_string(bat) + "%";
         gPut(COLS - (int)b.size() - 1, 0, b, bat < 20 ? C_RED : C_AMBER, true);
     }
-    for (int i = 0; i < 3; i++) gPut(2, 2 + i * 2, std::to_string(i + 1) + "  " + MENU[i] + "   ", C_AMBER, i == s_menuSel);
+    for (int i = 0; i < NMENU; i++) gPut(2, 2 + i * 2, std::to_string(i + 1) + "  " + MENU[i] + "   ", C_AMBER, i == s_menuSel);
     gPut(0, ROWS - 2, "Fn+; Fn+. move, Enter open", C_DIM);
     bottom("` back to the status");
 }
-static void menuOpen(int i) { goTo(i == 0 ? S_TERM : i == 1 ? S_WIFI : S_HELP); }
+static void menuOpen(int i) { goTo(i == 0 ? S_FT : i == 1 ? S_TERM : i == 2 ? S_WIFI : S_HELP); }
 static void menuKey(int k) {
     if (k == K_ESC) goTo(S_STATUS);
     else if (k == K_UP && s_menuSel > 0) s_menuSel--;
-    else if (k == K_DOWN && s_menuSel < 2) s_menuSel++;
+    else if (k == K_DOWN && s_menuSel < NMENU - 1) s_menuSel++;
     else if (k == '\r') menuOpen(s_menuSel);
-    else if (k >= '1' && k <= '3') menuOpen(k - '1');
+    else if (k >= '1' && k < '1' + NMENU) menuOpen(k - '1');
 }
 
 static void drawHelp() {
     gClear();
     gBar(0, "KEYS");
     static const char* t[] = {"` (Esc) back  Fn+; Fn+. up",
-                              "Status: Enter menu, T, W",
+                              "Status: Enter menu, F T W",
                               "Terminal: type, Enter",
                               " Tab text/CoL/CW",
                               " Alt: the To call",
@@ -496,6 +614,7 @@ static void drawHelp() {
 
 static void statusKey(int k) {
     if (k == '\r') { s_menuSel = 0; goTo(S_MENU); }
+    else if (k == 'f' || k == 'F') goTo(S_FT);
     else if (k == 't' || k == 'T') goTo(S_TERM);
     else if (k == 'w' || k == 'W') goTo(S_WIFI);
     else if (k == '?' || k == 'h' || k == 'H') goTo(S_HELP);
@@ -510,6 +629,8 @@ static void handleKey(int k) {
         case S_SCAN: scanKey(k); break;
         case S_INPUT: inputKey(k); break;
         case S_HELP: if (k == K_ESC || k == '\r') goTo(S_STATUS); break;
+        case S_FT: ftKey(k); break;
+        case S_FTHELP: if (k == K_ESC || k == '\r' || k == '?') goTo(S_FT); break;
     }
 }
 
@@ -521,6 +642,8 @@ static void draw() {
         case S_SCAN: drawScan(); break;
         case S_INPUT: drawInput(); break;
         case S_HELP: drawHelp(); break;
+        case S_FT: drawFt(); break;
+        case S_FTHELP: drawFtHelp(); break;
         default: break;
     }
 }

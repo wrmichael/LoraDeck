@@ -37,3 +37,6 @@ const int PATH_MAX = 40;
 
 bool ftlPack(const std::string& text, uint8_t out[FTL_PACKET]);          // false: cannot be packed
 bool ftlUnpack(const uint8_t* in, int len, std::string& text);           // false: not an FT-LoRa packet
+void ftlRemember(const std::string& call);   // put a call in the hashed-call table (our own, at start)
+void ftlForget();                            // empty that table (tests: another station's table)
+bool ftlStandardCall(const std::string& call);   // false: FT sends it as a hash in some messages

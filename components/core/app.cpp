@@ -77,6 +77,7 @@ void App::begin(const std::string& dataDir) {
 
 void App::syncSeq() {
     seq.myCall = cfg.call;
+    ftlRemember(cfg.call);                                    // a message to our call as a hash is ours from the start
     seq.myGrid = cfg.grid.substr(0, 4);
     seq.cqTag = cfg.cqTag;
     seq.maxRetries = cfg.maxRetries;
@@ -1002,7 +1003,7 @@ std::string App::stateJson(uint32_t sinceRx, bool withCfg) {
     std::string txText = ftOn ? cur_.text : pending ? ftText_ : (seq.txMsg ? seq.compose(seq.txMsg) : std::string());
     std::string o;
     o.reserve(4096);
-    o += "{\"ver\":" + jstr(version) + ",\"call\":" + jstr(cfg.call) + ",\"grid\":" + jstr(cfg.grid);
+    o += "{\"ver\":" + jstr(version) + ",\"call\":" + jstr(cfg.call) + ",\"callStd\":" + jbool(cfg.call.empty() || ftlStandardCall(cfg.call)) + ",\"grid\":" + jstr(cfg.grid);
     o += ",\"utc\":" + jnum(now) + ",\"clock\":" + jbool(clk::utcValid()) + ",\"clkSrc\":" + jstr(clk::sourceName(clk::source())) +
          ",\"clkAge\":" + jnum(clk::sinceSetMs() / 1000) + ",\"opCall\":" + jstr(cfg.operatorCall);
     o += ",\"mode\":" + jstr(modeName()) + ",\"hops\":" + jnum(mesh() ? hopsFit() : 0) +
@@ -1053,6 +1054,34 @@ std::vector<Decode> App::terminalLines(size_t max) {
     for (auto it = recent_.rbegin(); it != recent_.rend() && v.size() < max; ++it)
         if (it->kind == 1 || it->kind == 4 || (it->kind == 2 && it->snr == 99)) v.push_back(*it);
     return std::vector<Decode>(v.rbegin(), v.rend());
+}
+
+std::vector<Decode> App::ftLines(size_t max) {
+    std::lock_guard<std::mutex> lk(mtx_);
+    std::vector<Decode> v;
+    for (auto it = recent_.rbegin(); it != recent_.rend() && v.size() < max; ++it)
+        if (it->kind == 0) v.push_back(*it);
+    return std::vector<Decode>(v.rbegin(), v.rend());
+}
+
+App::FtView App::ftView() {
+    std::lock_guard<std::mutex> lk(mtx_);
+    FtView f;
+    f.mode = modeName();
+    f.opMode = seq.opMode;
+    f.txEn = seq.txEnabled;
+    f.tx = txOn_ && cur_.kind == TX_FT;
+    f.dx = seq.dxCall;
+    f.dxGrid = seq.dxGrid;
+    f.haveSent = seq.rptSent != Sequencer::UNSET;
+    f.haveRcvd = seq.rptRcvd != Sequencer::UNSET;
+    f.rptSent = f.haveSent ? seq.rptSent : 0;
+    f.rptRcvd = f.haveRcvd ? seq.rptRcvd : 0;
+    f.parity = myParity();
+    f.waitNext = seq.waitNext;
+    if (seq.txMsg) f.next = seq.compose(seq.txMsg);
+    f.status = status_;
+    return f;
 }
 
 int App::terminalWaiting() const {

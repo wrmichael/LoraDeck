@@ -72,6 +72,14 @@ public:
     std::vector<Decode> terminalLines(size_t max);
     int terminalWaiting() const;
     std::string lastCaller() const { std::lock_guard<std::mutex> lk(mtx_); return lastDe_; }
+    // ... and its FT screen: FT messages heard and sent (oldest first), and the sequencer at a glance
+    std::vector<Decode> ftLines(size_t max);
+    struct FtView {
+        std::string mode, dx, dxGrid, next, status;           // next: what we send in our next slot
+        int opMode = 0, rptSent = 0, rptRcvd = 0, parity = 0;
+        bool txEn = false, tx = false, waitNext = false, haveSent = false, haveRcvd = false;
+    };
+    FtView ftView();
 
 private:
     enum { TX_FT = 0, TX_RELAY = 1, TX_CHAT = 2, TX_CW = 3, TX_CWID = 4, TX_LCW = 5 };

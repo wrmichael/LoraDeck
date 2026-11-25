@@ -43,8 +43,8 @@
     and GNSS connectors (GNSS gives time and grid, as on the Cardputer).
   - Choose the board in the build (sdkconfig / Kconfig) or detect it at start, with one firmware image per board
     in the flasher.
-- **Cardputer keyboard** (done in 0.3.1: menu, Terminal, Wi-Fi, battery %). Still to do: operating FT-LoRa from
-  the keyboard (Call CQ, Auto hunt, answering), setting the callsign on the Cardputer, sound for received CW
+- **Cardputer keyboard** (done in 0.3.1: menu, Terminal, Wi-Fi, battery %; 0.3.2: FT-LoRa screen). Still to do:
+  setting the callsign on the Cardputer, sound for received CW
   (ES8311). Logs on the Cardputer's SD card (shares the radio's SPI pins 40/14/39, CS 12).
 - Other boards (done in 0.3.0; keyboard 0.3.1): M5Stack Cardputer-Adv + Cap LoRa-1262 (SX1262 on G3/G4/G6/G40/G14/G39/G5, ST7789 screen,
   keyboard, GPS for time and grid).

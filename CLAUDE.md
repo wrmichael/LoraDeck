@@ -84,6 +84,12 @@ Everything is operated from the web page; the OLED shows status only.
   and log. Second board done.
 - 2026-11-23 evening: 0.2.x running on both boards, "things seem to be working better". Wayne is recruiting more
   users for a wider test of this version. When reports come in: ask for the Console log download from each board.
+- 0.3.2 (2026-11-24): Cardputer FT screen (cardui S_FT: C cq, A auto CQ, H hunt, L listen, Space halt, arrows +
+  Enter = pick; App::ftLines/ftView). Long calls: Wayne set AC9HP/LORA and the other board could not decode it
+  (ft8_lib's encoder hashes a nonstandard call in every message but the CQ; host tests shared one hash table, so
+  they never saw it). Now ftmsg packType4: our long call + no-grid/RRR/RR73/73 -> type 4 with our call whole
+  (WSJT-X rule); ftlRemember(own call) in syncSeq; ftlStandardCall -> state callStd, web warning, FT screen note;
+  callOk 3-11 chars, a digit, "/" between parts. Tests use ftlForget/ftlRemember to give each side its own table.
 - 0.3.1 (2026-11-24): Cardputer keyboard: menu, Terminal, Wi-Fi (scan/join/forget/hotspot, live), battery %. 0.3.0
   ran on the Cardputer (screen right way up, GPS clock, hotspot); radio QSO not yet tried. Not yet built.
 - 0.3.0 (2026-11-24): Cardputer-Adv + Cap LoRa-1262 support (see Boards); flasher device choice; SD (M5Launcher)
