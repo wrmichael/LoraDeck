@@ -8,12 +8,13 @@
 <!-- ESP Web Tools: the browser flasher used by ESPHome. Major version pinned as its documentation recommends. -->
 <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
 <style>
+@font-face{font-family:"Audiowide";src:url(fonts/audiowide_call.ttf) format("truetype");font-display:swap}
 :root{--bg:#0b1014;--pan:#121a20;--pan2:#18232b;--line:#263540;--amb:#f2b632;--bad:#e5484d;--txt:#dfe8ee;--dim:#8a9aa6;
 --mono:ui-monospace,Menlo,Consolas,monospace}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--txt);font:18px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 main{max-width:860px;margin:0 auto;padding:28px 16px 60px}
-h1{font-size:44px;line-height:1.1;margin:0;color:var(--amb);letter-spacing:.5px}
+h1{font:44px/1.1 Audiowide,system-ui,sans-serif;margin:0;color:var(--amb);letter-spacing:.02em}
 .tag{font-size:20px;color:var(--dim);margin:6px 0 26px}
 h2{font-size:24px;margin:34px 0 12px}
 .card{background:var(--pan);border:1px solid var(--line);border-radius:12px;padding:22px 22px 18px}
@@ -80,7 +81,7 @@ esp-web-install-button:not(:defined) [slot=unsupported],esp-web-install-button:n
   <p>LoRaDeck makes FT8-style contacts over LoRa (FT-LoRa), relays them through other stations (FT-MESH), chats in a terminal and sends real CW, all from a web page on your phone. Contacts go into an ADIF log and to your logging program.</p>
   <p><a href="https://github.com/wrmichael/LoraDeck">Source code and manual on GitHub</a> · MIT licence</p>
 
-  <footer>LoRaDeck by AC9HP. Flashing uses <a href="https://esphome.github.io/esp-web-tools/">ESP Web Tools</a>; nothing is installed on your computer.</footer>
+  <footer>LoRaDeck by AC9HP. Flashing uses <a href="https://esphome.github.io/esp-web-tools/">ESP Web Tools</a>; nothing is installed on your computer. Audiowide font by Astigmatic (SIL Open Font License 1.1).</footer>
 </main>
 <script>
 // Each device has its own firmware: Heltec V3 at the top level, the Cardputer under cardputer/.
